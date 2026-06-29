@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fractions et puissances — Mini Anki</title>
+<style>
+:root{
+  --bg:#f6efe4;
+  --panel:#fffaf1;
+  --panel2:#fdf4e6;
+  --ink:#2c241d;
+  --muted:#7a6a5a;
+  --line:#e6d9c7;
+  --accent:#7c5c3a;
+  --accent2:#9a744b;
+  --good:#3f7d52;
+  --hard:#9a6a1f;
+  --again:#a4493d;
+  --easy:#3b6f8f;
+  --shadow:0 14px 40px rgba(64,42,24,.08);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:radial-gradient(circle at top left,#fff8ed 0,#f6efe4 38%,#efe3d1 100%);
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing:.01em;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:320px minmax(0,1fr);
+}
+.sidebar{
+  border-right:1px solid var(--line);
+  background:rgba(255,250,241,.72);
+  backdrop-filter:blur(18px);
+  padding:22px 18px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow:auto;
+}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.logo{
+  width:42px;height:42px;border-radius:16px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#85613d,#b58a59);
+  color:#fff7ec;font-weight:760;
+  box-shadow:0 9px 22px rgba(124,92,58,.22);
+}
+h1{font-size:18px;line-height:1.15;margin:0;font-weight:780}
+.subtitle{font-size:12px;color:var(--muted);margin-top:4px}
+.search{margin:15px 0 16px}
+.search input{
+  width:100%;border:1px solid var(--line);background:var(--panel);
+  border-radius:14px;padding:12px 13px;outline:none;
+}
+.search input:focus{border-color:#c8ad8d;box-shadow:0 0 0 4px rgba(124,92,58,.08)}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 18px}
+.stat{
+  background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:10px 8px;text-align:center;
+}
+.stat .n{font-size:18px;font-weight:780}.stat .t{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.deck-title{font-size:11px;color:var(--muted);font-weight:760;text-transform:uppercase;letter-spacing:.12em;margin:18px 4px 8px}
+.deck-tree{display:flex;flex-direction:column;gap:4px}
+.deck-btn{
+  width:100%;border:0;background:transparent;border-radius:13px;padding:8px 10px;
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;cursor:pointer;
+  text-align:left;color:var(--ink);
+}
+.deck-btn:hover{background:rgba(124,92,58,.08)}
+.deck-btn.active{background:var(--ink);color:#fff8ed}
+.deck-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.deck-count{font-size:11px;color:inherit;opacity:.72}
+.deck-level-0{padding-left:10px;font-weight:740}
+.deck-level-1{padding-left:24px}.deck-level-2{padding-left:38px}.deck-level-3{padding-left:52px}
+.side-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.small-btn{
+  border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px 10px;
+  font-size:12px;cursor:pointer;color:var(--muted);
+}
+.small-btn:hover{color:var(--ink);border-color:#d1b998}
+.main{padding:34px;display:flex;flex-direction:column;gap:22px;min-width:0}
+.topbar{
+  display:flex;justify-content:space-between;gap:16px;align-items:flex-start;
+  max-width:980px;width:100%;margin:0 auto;
+}
+.context h2{font-size:25px;margin:0 0 6px;font-weight:820;letter-spacing:-.02em}
+.context p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.modebar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{
+  border:1px solid var(--line);background:rgba(255,250,241,.78);border-radius:999px;
+  padding:10px 13px;cursor:pointer;font-size:13px;color:var(--muted);
+}
+.pill.active,.pill:hover{background:var(--ink);color:#fff8ed;border-color:var(--ink)}
+.study-wrap{max-width:980px;width:100%;margin:0 auto;display:grid;grid-template-columns:1fr;gap:16px}
+.progress-row{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px}
+.progress{height:8px;background:#e9ddcc;border-radius:999px;overflow:hidden;flex:1;border:1px solid #ded0bc}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#8b6a47,#bd9160);transition:width .22s ease}
+.card{
+  min-height:360px;background:rgba(255,250,241,.88);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.card:before{
+  content:"";position:absolute;inset:0 0 auto 0;height:7px;background:linear-gradient(90deg,#8c6844,#d0a06c,#8c6844);opacity:.7;
+}
+.card-meta{position:absolute;top:20px;left:24px;right:24px;display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px}
+.badge{border:1px solid var(--line);background:rgba(246,239,228,.74);border-radius:999px;padding:5px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
+.prompt{font-size:18px;color:var(--muted);margin:28px 0 20px;text-align:center;font-weight:690}
+.math{
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size:34px;line-height:1.55;text-align:center;color:var(--ink);
+  overflow-wrap:anywhere;
+}
+.answer-zone{border-top:1px solid var(--line);margin-top:28px;padding-top:28px;width:100%;display:none}
+.card.revealed .answer-zone{display:block}
+.condition{margin-top:18px;text-align:center;color:var(--muted);font-size:15px}
+.condition .math{font-size:22px;display:inline-block}
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.btn{
+  border:0;border-radius:16px;padding:13px 18px;cursor:pointer;font-weight:740;
+  background:var(--ink);color:#fff8ed;box-shadow:0 9px 22px rgba(44,36,29,.12);
+}
+.btn:hover{transform:translateY(-1px)}
+.btn.secondary{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.again{background:var(--again)}.btn.hard{background:var(--hard)}.btn.good{background:var(--good)}.btn.easy{background:var(--easy)}
+.hint{text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
+.empty{
+  background:rgba(255,250,241,.75);border:1px solid var(--line);border-radius:var(--radius);
+  padding:36px;text-align:center;color:var(--muted);box-shadow:var(--shadow);
+}
+.browser{
+  max-width:980px;width:100%;margin:0 auto;display:none;background:rgba(255,250,241,.78);
+  border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+}
+.browser.show{display:block}
+.browser-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.browser-head strong{font-size:14px}.browser-list{max-height:340px;overflow:auto}
+.row{display:grid;grid-template-columns:1fr 1.35fr auto;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(230,217,199,.72);align-items:center;font-size:13px}
+.row:last-child{border-bottom:0}.row .mini-math{font-family:ui-serif, Georgia, serif;font-size:16px}.row .muted{color:var(--muted);font-size:11px}
+.frac{display:inline-flex;vertical-align:middle;flex-direction:column;align-items:center;line-height:1.05;margin:0 .08em;transform:translateY(.08em)}
+.frac .num{border-bottom:1.5px solid currentColor;padding:0 .18em .06em}.frac .den{padding:.06em .18em 0}.frac .num,.frac .den{display:block;text-align:center}
+sup{font-size:.62em;line-height:0;vertical-align:super}sub{font-size:.62em;line-height:0;vertical-align:sub}.under{display:inline-flex;flex-direction:column;align-items:center}.under .base{border-bottom:1px solid currentColor}.under .label{font-size:.42em;color:var(--muted);margin-top:.1em}.tex-text{font-family:inherit;font-size:.72em}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--ink);color:#fff8ed;padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);font-size:13px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+.file-input{display:none}
+@media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}.main{padding:22px 14px}.topbar{flex-direction:column}.modebar{justify-content:flex-start}.card{padding:26px 18px;min-height:330px}.math{font-size:27px}.row{grid-template-columns:1fr}.card-meta{position:static;margin-bottom:16px;width:100%}.badge{max-width:100%}}
+
+/* Responsive + touch polish */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{overflow-x:hidden}
+button,.deck-btn,.pill,.small-btn,.btn{touch-action:manipulation;-webkit-tap-highlight-color:rgba(124,92,58,.14)}
+button{min-height:44px}
+.main,.study-wrap,.topbar,.browser,.card,.math{min-width:0}
+.math{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.math::-webkit-scrollbar,.browser-list::-webkit-scrollbar,.sidebar::-webkit-scrollbar{height:6px;width:8px}
+.math::-webkit-scrollbar-thumb,.browser-list::-webkit-scrollbar-thumb,.sidebar::-webkit-scrollbar-thumb{background:rgba(124,92,58,.24);border-radius:999px}
+.mobile-deck-toggle{display:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:10px 14px;font-size:13px;font-weight:760;color:var(--ink);box-shadow:0 7px 20px rgba(44,36,29,.06)}
+.mobile-scrim{display:none;position:fixed;inset:0;background:rgba(44,36,29,.24);backdrop-filter:blur(2px);z-index:25}
+.mobile-scrim.show{display:block}
+@media(max-width:1024px){
+  .app{grid-template-columns:280px minmax(0,1fr)}
+  .main{padding:28px 22px}
+  .context h2{font-size:23px}
+  .math{font-size:30px}
+}
+@media(max-width:860px){
+  .app{display:block;min-height:100svh}
+  .mobile-deck-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;position:sticky;top:12px;z-index:20;align-self:flex-start}
+  .sidebar{position:fixed;inset:0 auto 0 0;width:min(86vw,360px);height:100svh;max-height:100svh;transform:translateX(-104%);transition:transform .22s ease;border-right:1px solid var(--line);border-bottom:0;z-index:30;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 18px 60px rgba(44,36,29,.22);background:rgba(255,250,241,.96)}
+  .sidebar.open{transform:translateX(0)}
+  .main{padding:18px max(14px,env(safe-area-inset-left)) calc(22px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right));gap:16px}
+  .topbar{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+  .modebar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+  .pill{width:100%;padding:10px 8px;text-align:center;font-size:12px;white-space:nowrap}
+  .card{padding:22px 14px;min-height:58svh;border-radius:20px}
+  .card-meta{position:static;margin:0 0 12px;width:100%;align-items:center}
+  .prompt{font-size:16px;margin:18px 0 14px}
+  .math{font-size:clamp(23px,7vw,30px);line-height:1.6}
+  .answer-zone{margin-top:22px;padding-top:22px}
+  .condition{font-size:14px}
+  .condition .math{font-size:clamp(18px,5vw,22px)}
+  .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%}
+  .controls .btn{width:100%;padding:14px 10px;border-radius:15px}
+  #showAnswer{grid-column:1/-1}
+  .hint{font-size:11px;padding:0 4px}
+  .browser{border-radius:20px}
+  .browser-head{align-items:flex-start;gap:8px;flex-direction:column}
+  .browser-list{max-height:none}
+  .row{grid-template-columns:1fr;gap:8px;padding:14px}
+}
+@media(max-width:520px){
+  .main{padding-top:14px}
+  .brand{margin-bottom:14px}
+  .logo{width:38px;height:38px;border-radius:14px}
+  h1{font-size:17px}
+  .statgrid{gap:6px}
+  .stat{padding:8px 5px;border-radius:13px}
+  .stat .n{font-size:16px}.stat .t{font-size:9px}
+  .context h2{font-size:21px;line-height:1.15}
+  .context p{font-size:13px}
+  .progress-row{font-size:11px;gap:8px}
+  .progress{height:7px}
+  .card{min-height:56svh;padding:20px 12px}
+  .badge{max-width:68%;font-size:11px}
+  .controls{grid-template-columns:1fr 1fr}
+  .btn{font-size:13px;min-height:48px}
+  .small-btn{font-size:11px;padding:8px 9px}
+}
+@media(max-width:380px){
+  .modebar{grid-template-columns:1fr}
+  .controls{grid-template-columns:1fr}
+  .math{font-size:22px}
+  .sidebar{width:92vw}
+}
+@media(pointer:coarse){
+  .deck-btn{min-height:42px;padding-top:10px;padding-bottom:10px}
+  .pill,.small-btn,.btn{min-height:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+</style>
+</head>
+<body>
+<div class="mobile-scrim" id="mobileScrim" aria-hidden="true"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <h1>Mini Anki</h1>
+        <div class="subtitle">Fractions et puissances</div>
+      </div>
+    </div>
+    <div class="search"><input id="search" placeholder="Rechercher une carte…" autocomplete="off"></div>
+    <div class="statgrid">
+      <div class="stat"><div class="n" id="statDue">0</div><div class="t">À revoir</div></div>
+      <div class="stat"><div class="n" id="statNew">0</div><div class="t">Nouvelles</div></div>
+      <div class="stat"><div class="n" id="statTotal">0</div><div class="t">Total</div></div>
+    </div>
+    <div class="deck-title">Decks</div>
+    <div id="deckTree" class="deck-tree"></div>
+    <div class="side-actions">
+      <button class="small-btn" id="exportProgress">Exporter progrès</button>
+      <button class="small-btn" id="importProgress">Importer</button>
+      <button class="small-btn" id="resetProgress">Réinitialiser</button>
+      <input id="progressFile" class="file-input" type="file" accept="application/json,.json">
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="mobile-deck-toggle" id="mobileDeckToggle" type="button" aria-controls="sidebar" aria-expanded="false">Decks</button>
+      <div class="context">
+        <h2 id="deckHeading">Tous les decks</h2>
+        <p id="deckDescription">Étudie les cartes dues, ou lance une session complète du deck sélectionné.</p>
+      </div>
+      <div class="modebar">
+        <button class="pill active" data-mode="due">Cartes dues</button>
+        <button class="pill" data-mode="all">Tout étudier</button>
+        <button class="pill" data-mode="browse">Parcourir</button>
+      </div>
+    </div>
+
+    <section class="study-wrap" id="studyWrap">
+      <div class="progress-row"><span id="sessionInfo">Session</span><div class="progress"><span id="progressBar"></span></div><span id="progressText">0/0</span></div>
+      <article class="card" id="card">
+        <div class="card-meta"><span class="badge" id="cardDeck">Deck</span><span id="cardState">Nouvelle</span></div>
+        <div class="prompt" id="prompt">Choisis un deck</div>
+        <div class="math" id="frontMath"></div>
+        <div class="answer-zone" id="answerZone">
+          <div class="math" id="backMath"></div>
+          <div class="condition" id="condition"></div>
+        </div>
+      </article>
+      <div class="controls" id="controls">
+        <button class="btn" id="showAnswer">Afficher la réponse</button>
+      </div>
+      <div class="hint">Raccourcis : <span class="mono">Espace</span> afficher · <span class="mono">1</span> À revoir · <span class="mono">2</span> Difficile · <span class="mono">3</span> Bien · <span class="mono">4</span> Facile.</div>
+    </section>
+
+    <section class="browser" id="browser">
+      <div class="browser-head"><strong id="browserTitle">Cartes</strong><span class="subtitle" id="browserCount"></span></div>
+      <div class="browser-list" id="browserList"></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CARDS = [{"id": "fp-001", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Définition", "prompt": "Définition", "questionTex": "a^n=?", "answerTex": "a^n=\\underbrace{a\\times a\\times\\cdots\\times a}_{n\\text{ facteurs}}", "conditionTex": "n\\in\\mathbb N^*", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-002", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Exposant un", "prompt": "Exposant un", "questionTex": "a^1=?", "answerTex": "a^1=a", "conditionTex": "", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-003", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Exposant zéro", "prompt": "Exposant zéro", "questionTex": "a^0=?", "answerTex": "a^0=1", "conditionTex": "a\\neq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-004", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Même base", "prompt": "Même base", "questionTex": "a^m\\times a^n=?", "answerTex": "a^m\\times a^n=a^{m+n}", "conditionTex": "", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-005", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Quotient même base", "prompt": "Quotient même base", "questionTex": "\\dfrac{a^m}{a^n}=?", "answerTex": "\\dfrac{a^m}{a^n}=a^{m-n}", "conditionTex": "a\\neq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-006", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Puissance de puissance", "prompt": "Puissance de puissance", "questionTex": "(a^m)^n=?", "answerTex": "(a^m)^n=a^{mn}", "conditionTex": "", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-007", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Puissance produit", "prompt": "Puissance produit", "questionTex": "(ab)^n=?", "answerTex": "(ab)^n=a^n b^n", "conditionTex": "", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-008", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Puissance quotient", "prompt": "Puissance quotient", "questionTex": "\\left(\\dfrac{a}{b}\\right)^n=?", "answerTex": "\\left(\\dfrac{a}{b}\\right)^n=\\dfrac{a^n}{b^n}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-009", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Exposant négatif", "prompt": "Exposant négatif", "questionTex": "a^{-n}=?", "answerTex": "a^{-n}=\\dfrac{1}{a^n}", "conditionTex": "a\\neq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-010", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Inverse négatif", "prompt": "Inverse négatif", "questionTex": "\\dfrac{1}{a^{-n}}=?", "answerTex": "\\dfrac{1}{a^{-n}}=a^n", "conditionTex": "a\\neq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-011", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Puissance de dix", "prompt": "Puissance de dix", "questionTex": "10^n=?", "answerTex": "10^n=1\\underbrace{00\\cdots0}_{n\\text{ zéros}}", "conditionTex": "n\\in\\mathbb N", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-012", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Dix négatif", "prompt": "Dix négatif", "questionTex": "10^{-n}=?", "answerTex": "10^{-n}=\\dfrac{1}{10^n}", "conditionTex": "n\\in\\mathbb N", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-013", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Racine carrée", "prompt": "Racine carrée", "questionTex": "a^{1/2}=?", "answerTex": "a^{1/2}=\\sqrt a", "conditionTex": "a\\geq0", "conditionText": "", "tags": "puissances règles"}, {"id": "fp-014", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Racine n-ième", "prompt": "Racine n-ième", "questionTex": "a^{1/n}=?", "answerTex": "a^{1/n}=\\sqrt[n]{a}", "conditionTex": "", "conditionText": "expression définie", "tags": "puissances règles"}, {"id": "fp-015", "deck": "Fractions et puissances::Règles générales::Puissances", "label": "Exposant fractionnaire", "prompt": "Exposant fractionnaire", "questionTex": "a^{m/n}=?", "answerTex": "a^{m/n}=\\sqrt[n]{a^m}=(\\sqrt[n]{a})^m", "conditionTex": "", "conditionText": "expression définie", "tags": "puissances règles"}, {"id": "fp-016", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Définition", "prompt": "Définition", "questionTex": "\\dfrac{a}{b}\\quad \\text{existe}", "answerTex": "\\dfrac{a}{b}\\text{ existe }\\iff b\\neq0", "conditionTex": "", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-017", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Entier en fraction", "prompt": "Entier en fraction", "questionTex": "a=?", "answerTex": "a=\\dfrac{a}{1}", "conditionTex": "", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-018", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Fraction unité", "prompt": "Fraction unité", "questionTex": "\\dfrac{a}{a}=?", "answerTex": "\\dfrac{a}{a}=1", "conditionTex": "a\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-019", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Fraction nulle", "prompt": "Fraction nulle", "questionTex": "\\dfrac{0}{a}=?", "answerTex": "\\dfrac{0}{a}=0", "conditionTex": "a\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-020", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Même facteur", "prompt": "Même facteur", "questionTex": "\\dfrac{a}{b}=?", "answerTex": "\\dfrac{a}{b}=\\dfrac{a\\times k}{b\\times k}\\Longleftrightarrow\\dfrac{a\\times k}{b\\times k}=\\dfrac{a}{b}", "conditionTex": "b\\neq0,\\ k\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-021", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Somme même dénom.", "prompt": "Somme même dénom.", "questionTex": "\\dfrac{a}{b}+\\dfrac{c}{b}=?", "answerTex": "\\dfrac{a}{b}+\\dfrac{c}{b}=\\dfrac{a+c}{b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-022", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Différence même dénom.", "prompt": "Différence même dénom.", "questionTex": "\\dfrac{a}{b}-\\dfrac{c}{b}=?", "answerTex": "\\dfrac{a}{b}-\\dfrac{c}{b}=\\dfrac{a-c}{b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-023", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Somme", "prompt": "Somme", "questionTex": "\\dfrac{a}{b}+\\dfrac{c}{d}=?", "answerTex": "\\dfrac{a}{b}+\\dfrac{c}{d}=\\dfrac{ad}{bd}+\\dfrac{bc}{bd}=\\dfrac{ad+bc}{bd}", "conditionTex": "b\\neq0,\\ d\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-024", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Différence", "prompt": "Différence", "questionTex": "\\dfrac{a}{b}-\\dfrac{c}{d}=?", "answerTex": "\\dfrac{a}{b}-\\dfrac{c}{d}=\\dfrac{ad}{bd}-\\dfrac{bc}{bd}=\\dfrac{ad-bc}{bd}", "conditionTex": "b\\neq0,\\ d\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-025", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Produit", "prompt": "Produit", "questionTex": "\\dfrac{a}{b}\\times\\dfrac{c}{d}=?", "answerTex": "\\dfrac{a}{b}\\times\\dfrac{c}{d}=\\dfrac{ac}{bd}", "conditionTex": "b\\neq0,\\ d\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-026", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Division", "prompt": "Division", "questionTex": "\\dfrac{a}{b}\\div\\dfrac{c}{d}=?", "answerTex": "\\dfrac{a}{b}\\div\\dfrac{c}{d}=\\dfrac{a}{b}\\times\\dfrac{d}{c}=\\dfrac{ad}{bc}", "conditionTex": "b\\neq0,\\ c\\neq0,\\ d\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-027", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Inverse", "prompt": "Inverse", "questionTex": "\\left(\\dfrac{a}{b}\\right)^{-1}=?", "answerTex": "\\left(\\dfrac{a}{b}\\right)^{-1}=\\dfrac{b}{a}", "conditionTex": "a\\neq0,\\ b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-028", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Opposé", "prompt": "Opposé", "questionTex": "-\\dfrac{a}{b}=?", "answerTex": "-\\dfrac{a}{b}=\\dfrac{-a}{b}=\\dfrac{a}{-b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-029", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Signe en haut", "prompt": "Signe en haut", "questionTex": "\\dfrac{-a}{b}=?", "answerTex": "\\dfrac{-a}{b}=-\\dfrac{a}{b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-030", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Signe en bas", "prompt": "Signe en bas", "questionTex": "\\dfrac{a}{-b}=?", "answerTex": "\\dfrac{a}{-b}=-\\dfrac{a}{b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-031", "deck": "Fractions et puissances::Règles générales::Fractions", "label": "Double signe", "prompt": "Double signe", "questionTex": "\\dfrac{-a}{-b}=?", "answerTex": "\\dfrac{-a}{-b}=\\dfrac{a}{b}", "conditionTex": "b\\neq0", "conditionText": "", "tags": "fractions règles"}, {"id": "fp-032", "deck": "Fractions et puissances::Compétences::01 Entier comme fraction", "label": "Exercice", "prompt": "Écris en fraction", "questionTex": "4", "answerTex": "4=\\dfrac{4}{1}", "conditionTex": "", "conditionText": "", "tags": "exercices comp01"}, {"id": "fp-033", "deck": "Fractions et puissances::Compétences::01 Entier comme fraction", "label": "Exercice", "prompt": "Écris en fraction", "questionTex": "-7", "answerTex": "-7=\\dfrac{-7}{1}", "conditionTex": "", "conditionText": "", "tags": "exercices comp01"}, {"id": "fp-034", "deck": "Fractions et puissances::Compétences::01 Entier comme fraction", "label": "Exercice", "prompt": "Écris en fraction", "questionTex": "0", "answerTex": "0=\\dfrac{0}{1}", "conditionTex": "", "conditionText": "", "tags": "exercices comp01"}, {"id": "fp-035", "deck": "Fractions et puissances::Compétences::01 Entier comme fraction", "label": "Exercice", "prompt": "Écris en fraction", "questionTex": "12", "answerTex": "12=\\dfrac{12}{1}", "conditionTex": "", "conditionText": "", "tags": "exercices comp01"}, {"id": "fp-036", "deck": "Fractions et puissances::Compétences::01 Entier comme fraction", "label": "Exercice", "prompt": "Écris en fraction", "questionTex": "-25", "answerTex": "-25=\\dfrac{-25}{1}", "conditionTex": "", "conditionText": "", "tags": "exercices comp01"}, {"id": "fp-037", "deck": "Fractions et puissances::Compétences::02 Zéro et unité", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{0}{5}", "answerTex": "\\dfrac{0}{5}=0", "conditionTex": "5\\neq0", "conditionText": "", "tags": "exercices comp02"}, {"id": "fp-038", "deck": "Fractions et puissances::Compétences::02 Zéro et unité", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{8}{8}", "answerTex": "\\dfrac{8}{8}=1", "conditionTex": "8\\neq0", "conditionText": "", "tags": "exercices comp02"}, {"id": "fp-039", "deck": "Fractions et puissances::Compétences::02 Zéro et unité", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{0}{-3}", "answerTex": "\\dfrac{0}{-3}=0", "conditionTex": "-3\\neq0", "conditionText": "", "tags": "exercices comp02"}, {"id": "fp-040", "deck": "Fractions et puissances::Compétences::02 Zéro et unité", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-11}{-11}", "answerTex": "\\dfrac{-11}{-11}=1", "conditionTex": "-11\\neq0", "conditionText": "", "tags": "exercices comp02"}, {"id": "fp-041", "deck": "Fractions et puissances::Compétences::02 Zéro et unité", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{0}{127}", "answerTex": "\\dfrac{0}{127}=0", "conditionTex": "127\\neq0", "conditionText": "", "tags": "exercices comp02"}, {"id": "fp-042", "deck": "Fractions et puissances::Compétences::03 Simplifier une fraction", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{6}{8}", "answerTex": "\\dfrac{6}{8}=\\dfrac{3\\times2}{4\\times2}=\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp03"}, {"id": "fp-043", "deck": "Fractions et puissances::Compétences::03 Simplifier une fraction", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{15}{20}", "answerTex": "\\dfrac{15}{20}=\\dfrac{3\\times5}{4\\times5}=\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp03"}, {"id": "fp-044", "deck": "Fractions et puissances::Compétences::03 Simplifier une fraction", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{18}{24}", "answerTex": "\\dfrac{18}{24}=\\dfrac{3\\times6}{4\\times6}=\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp03"}, {"id": "fp-045", "deck": "Fractions et puissances::Compétences::03 Simplifier une fraction", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{-21}{28}", "answerTex": "\\dfrac{-21}{28}=\\dfrac{-3\\times7}{4\\times7}=-\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp03"}, {"id": "fp-046", "deck": "Fractions et puissances::Compétences::03 Simplifier une fraction", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{45}{-60}", "answerTex": "\\dfrac{45}{-60}=\\dfrac{3\\times15}{-4\\times15}=-\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp03"}, {"id": "fp-047", "deck": "Fractions et puissances::Compétences::04 Même dénominateur", "label": "Exercice", "prompt": "Même dénominateur", "questionTex": "\\dfrac{1}{2}\\quad \\text{ et }\\quad \\dfrac{1}{3}", "answerTex": "\\dfrac{1}{2}=\\dfrac{3}{6}\\quad \\text{ et }\\quad \\dfrac{1}{3}=\\dfrac{2}{6}", "conditionTex": "", "conditionText": "", "tags": "exercices comp04"}, {"id": "fp-048", "deck": "Fractions et puissances::Compétences::04 Même dénominateur", "label": "Exercice", "prompt": "Même dénominateur", "questionTex": "\\dfrac{2}{5}\\quad \\text{ et }\\quad \\dfrac{1}{4}", "answerTex": "\\dfrac{2}{5}=\\dfrac{8}{20}\\quad \\text{ et }\\quad \\dfrac{1}{4}=\\dfrac{5}{20}", "conditionTex": "", "conditionText": "", "tags": "exercices comp04"}, {"id": "fp-049", "deck": "Fractions et puissances::Compétences::04 Même dénominateur", "label": "Exercice", "prompt": "Même dénominateur", "questionTex": "\\dfrac{3}{7}\\quad \\text{ et }\\quad \\dfrac{2}{3}", "answerTex": "\\dfrac{3}{7}=\\dfrac{9}{21}\\quad \\text{ et }\\quad \\dfrac{2}{3}=\\dfrac{14}{21}", "conditionTex": "", "conditionText": "", "tags": "exercices comp04"}, {"id": "fp-050", "deck": "Fractions et puissances::Compétences::04 Même dénominateur", "label": "Exercice", "prompt": "Même dénominateur", "questionTex": "\\dfrac{-1}{6}\\quad \\text{ et }\\quad \\dfrac{5}{8}", "answerTex": "\\dfrac{-1}{6}=\\dfrac{-4}{24}\\quad \\text{ et }\\quad \\dfrac{5}{8}=\\dfrac{15}{24}", "conditionTex": "", "conditionText": "", "tags": "exercices comp04"}, {"id": "fp-051", "deck": "Fractions et puissances::Compétences::04 Même dénominateur", "label": "Exercice", "prompt": "Même dénominateur", "questionTex": "\\dfrac{4}{9}\\quad \\text{ et }\\quad \\dfrac{-5}{12}", "answerTex": "\\dfrac{4}{9}=\\dfrac{16}{36}\\quad \\text{ et }\\quad \\dfrac{-5}{12}=\\dfrac{-15}{36}", "conditionTex": "", "conditionText": "", "tags": "exercices comp04"}, {"id": "fp-052", "deck": "Fractions et puissances::Compétences::05 Additionner des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2}{7}+\\dfrac{3}{7}", "answerTex": "\\dfrac{2}{7}+\\dfrac{3}{7}=\\dfrac{2+3}{7}=\\dfrac{5}{7}", "conditionTex": "", "conditionText": "", "tags": "exercices comp05"}, {"id": "fp-053", "deck": "Fractions et puissances::Compétences::05 Additionner des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{5}{9}+\\dfrac{1}{9}", "answerTex": "\\dfrac{5}{9}+\\dfrac{1}{9}=\\dfrac{5+1}{9}=\\dfrac{6}{9}=\\dfrac{2}{3}", "conditionTex": "", "conditionText": "", "tags": "exercices comp05"}, {"id": "fp-054", "deck": "Fractions et puissances::Compétences::05 Additionner des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{1}{2}+\\dfrac{1}{3}", "answerTex": "\\dfrac{1}{2}+\\dfrac{1}{3}=\\dfrac{3}{6}+\\dfrac{2}{6}=\\dfrac{5}{6}", "conditionTex": "", "conditionText": "", "tags": "exercices comp05"}, {"id": "fp-055", "deck": "Fractions et puissances::Compétences::05 Additionner des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{4}+\\dfrac{5}{6}", "answerTex": "\\dfrac{3}{4}+\\dfrac{5}{6}=\\dfrac{9}{12}+\\dfrac{10}{12}=\\dfrac{19}{12}", "conditionTex": "", "conditionText": "", "tags": "exercices comp05"}, {"id": "fp-056", "deck": "Fractions et puissances::Compétences::05 Additionner des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-2}{5}+\\dfrac{7}{10}", "answerTex": "\\dfrac{-2}{5}+\\dfrac{7}{10}=\\dfrac{-4}{10}+\\dfrac{7}{10}=\\dfrac{3}{10}", "conditionTex": "", "conditionText": "", "tags": "exercices comp05"}, {"id": "fp-057", "deck": "Fractions et puissances::Compétences::06 Soustraire des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{5}{8}-\\dfrac{2}{8}", "answerTex": "\\dfrac{5}{8}-\\dfrac{2}{8}=\\dfrac{5-2}{8}=\\dfrac{3}{8}", "conditionTex": "", "conditionText": "", "tags": "exercices comp06"}, {"id": "fp-058", "deck": "Fractions et puissances::Compétences::06 Soustraire des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{7}{10}-\\dfrac{3}{10}", "answerTex": "\\dfrac{7}{10}-\\dfrac{3}{10}=\\dfrac{7-3}{10}=\\dfrac{4}{10}=\\dfrac{2}{5}", "conditionTex": "", "conditionText": "", "tags": "exercices comp06"}, {"id": "fp-059", "deck": "Fractions et puissances::Compétences::06 Soustraire des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{4}-\\dfrac{1}{2}", "answerTex": "\\dfrac{3}{4}-\\dfrac{1}{2}=\\dfrac{3}{4}-\\dfrac{2}{4}=\\dfrac{1}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp06"}, {"id": "fp-060", "deck": "Fractions et puissances::Compétences::06 Soustraire des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{5}{6}-\\dfrac{3}{8}", "answerTex": "\\dfrac{5}{6}-\\dfrac{3}{8}=\\dfrac{20}{24}-\\dfrac{9}{24}=\\dfrac{11}{24}", "conditionTex": "", "conditionText": "", "tags": "exercices comp06"}, {"id": "fp-061", "deck": "Fractions et puissances::Compétences::06 Soustraire des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-1}{3}-\\dfrac{5}{6}", "answerTex": "\\dfrac{-1}{3}-\\dfrac{5}{6}=\\dfrac{-2}{6}-\\dfrac{5}{6}=\\dfrac{-7}{6}", "conditionTex": "", "conditionText": "", "tags": "exercices comp06"}, {"id": "fp-062", "deck": "Fractions et puissances::Compétences::07 Multiplier des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2}{3}\\times\\dfrac{4}{5}", "answerTex": "\\dfrac{2}{3}\\times\\dfrac{4}{5}=\\dfrac{2\\times4}{3\\times5}=\\dfrac{8}{15}", "conditionTex": "", "conditionText": "", "tags": "exercices comp07"}, {"id": "fp-063", "deck": "Fractions et puissances::Compétences::07 Multiplier des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{7}\\times\\dfrac{14}{9}", "answerTex": "\\dfrac{3}{7}\\times\\dfrac{14}{9}=\\dfrac{42}{63}=\\dfrac{2}{3}", "conditionTex": "", "conditionText": "", "tags": "exercices comp07"}, {"id": "fp-064", "deck": "Fractions et puissances::Compétences::07 Multiplier des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-5}{6}\\times\\dfrac{3}{10}", "answerTex": "\\dfrac{-5}{6}\\times\\dfrac{3}{10}=\\dfrac{-15}{60}=-\\dfrac{1}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp07"}, {"id": "fp-065", "deck": "Fractions et puissances::Compétences::07 Multiplier des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{4}{15}\\times\\dfrac{-25}{8}", "answerTex": "\\dfrac{4}{15}\\times\\dfrac{-25}{8}=\\dfrac{-100}{120}=-\\dfrac{5}{6}", "conditionTex": "", "conditionText": "", "tags": "exercices comp07"}, {"id": "fp-066", "deck": "Fractions et puissances::Compétences::07 Multiplier des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-9}{14}\\times\\dfrac{-21}{6}", "answerTex": "\\dfrac{-9}{14}\\times\\dfrac{-21}{6}=\\dfrac{189}{84}=\\dfrac{9}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp07"}, {"id": "fp-067", "deck": "Fractions et puissances::Compétences::08 Diviser des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2}{3}\\div\\dfrac{4}{5}", "answerTex": "\\dfrac{2}{3}\\div\\dfrac{4}{5}=\\dfrac{2}{3}\\times\\dfrac{5}{4}=\\dfrac{10}{12}=\\dfrac{5}{6}", "conditionTex": "\\dfrac{4}{5}\\neq0", "conditionText": "", "tags": "exercices comp08"}, {"id": "fp-068", "deck": "Fractions et puissances::Compétences::08 Diviser des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{7}{8}\\div\\dfrac{14}{3}", "answerTex": "\\dfrac{7}{8}\\div\\dfrac{14}{3}=\\dfrac{7}{8}\\times\\dfrac{3}{14}=\\dfrac{21}{112}=\\dfrac{3}{16}", "conditionTex": "\\dfrac{14}{3}\\neq0", "conditionText": "", "tags": "exercices comp08"}, {"id": "fp-069", "deck": "Fractions et puissances::Compétences::08 Diviser des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-5}{6}\\div\\dfrac{10}{9}", "answerTex": "\\dfrac{-5}{6}\\div\\dfrac{10}{9}=\\dfrac{-5}{6}\\times\\dfrac{9}{10}=\\dfrac{-45}{60}=-\\dfrac{3}{4}", "conditionTex": "\\dfrac{10}{9}\\neq0", "conditionText": "", "tags": "exercices comp08"}, {"id": "fp-070", "deck": "Fractions et puissances::Compétences::08 Diviser des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{4}\\div\\dfrac{-9}{8}", "answerTex": "\\dfrac{3}{4}\\div\\dfrac{-9}{8}=\\dfrac{3}{4}\\times\\dfrac{-8}{9}=\\dfrac{-24}{36}=-\\dfrac{2}{3}", "conditionTex": "\\dfrac{-9}{8}\\neq0", "conditionText": "", "tags": "exercices comp08"}, {"id": "fp-071", "deck": "Fractions et puissances::Compétences::08 Diviser des fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{-11}{15}\\div\\dfrac{-22}{25}", "answerTex": "\\dfrac{-11}{15}\\div\\dfrac{-22}{25}=\\dfrac{-11}{15}\\times\\dfrac{-25}{22}=\\dfrac{275}{330}=\\dfrac{5}{6}", "conditionTex": "\\dfrac{-22}{25}\\neq0", "conditionText": "", "tags": "exercices comp08"}, {"id": "fp-072", "deck": "Fractions et puissances::Compétences::09 Trouver l’inverse", "label": "Exercice", "prompt": "Inverse de", "questionTex": "\\dfrac{2}{3}", "answerTex": "\\left(\\dfrac{2}{3}\\right)^{-1}=\\dfrac{3}{2}", "conditionTex": "\\dfrac{2}{3}\\neq0", "conditionText": "", "tags": "exercices comp09"}, {"id": "fp-073", "deck": "Fractions et puissances::Compétences::09 Trouver l’inverse", "label": "Exercice", "prompt": "Inverse de", "questionTex": "\\dfrac{5}{8}", "answerTex": "\\left(\\dfrac{5}{8}\\right)^{-1}=\\dfrac{8}{5}", "conditionTex": "\\dfrac{5}{8}\\neq0", "conditionText": "", "tags": "exercices comp09"}, {"id": "fp-074", "deck": "Fractions et puissances::Compétences::09 Trouver l’inverse", "label": "Exercice", "prompt": "Inverse de", "questionTex": "-\\dfrac{4}{7}", "answerTex": "\\left(-\\dfrac{4}{7}\\right)^{-1}=-\\dfrac{7}{4}", "conditionTex": "-\\dfrac{4}{7}\\neq0", "conditionText": "", "tags": "exercices comp09"}, {"id": "fp-075", "deck": "Fractions et puissances::Compétences::09 Trouver l’inverse", "label": "Exercice", "prompt": "Inverse de", "questionTex": "6", "answerTex": "6^{-1}=\\dfrac{1}{6}", "conditionTex": "6\\neq0", "conditionText": "", "tags": "exercices comp09"}, {"id": "fp-076", "deck": "Fractions et puissances::Compétences::09 Trouver l’inverse", "label": "Exercice", "prompt": "Inverse de", "questionTex": "-\\dfrac{13}{2}", "answerTex": "\\left(-\\dfrac{13}{2}\\right)^{-1}=-\\dfrac{2}{13}", "conditionTex": "-\\dfrac{13}{2}\\neq0", "conditionText": "", "tags": "exercices comp09"}, {"id": "fp-077", "deck": "Fractions et puissances::Compétences::10 Gérer les signes", "label": "Exercice", "prompt": "Simplifie", "questionTex": "-\\dfrac{3}{5}", "answerTex": "-\\dfrac{3}{5}=\\dfrac{-3}{5}=\\dfrac{3}{-5}", "conditionTex": "", "conditionText": "", "tags": "exercices comp10"}, {"id": "fp-078", "deck": "Fractions et puissances::Compétences::10 Gérer les signes", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{-4}{7}", "answerTex": "\\dfrac{-4}{7}=-\\dfrac{4}{7}", "conditionTex": "", "conditionText": "", "tags": "exercices comp10"}, {"id": "fp-079", "deck": "Fractions et puissances::Compétences::10 Gérer les signes", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{6}{-11}", "answerTex": "\\dfrac{6}{-11}=-\\dfrac{6}{11}", "conditionTex": "", "conditionText": "", "tags": "exercices comp10"}, {"id": "fp-080", "deck": "Fractions et puissances::Compétences::10 Gérer les signes", "label": "Exercice", "prompt": "Simplifie", "questionTex": "\\dfrac{-8}{-9}", "answerTex": "\\dfrac{-8}{-9}=\\dfrac{8}{9}", "conditionTex": "", "conditionText": "", "tags": "exercices comp10"}, {"id": "fp-081", "deck": "Fractions et puissances::Compétences::10 Gérer les signes", "label": "Exercice", "prompt": "Simplifie", "questionTex": "-\\dfrac{-12}{15}", "answerTex": "-\\dfrac{-12}{15}=\\dfrac{12}{15}=\\dfrac{4}{5}", "conditionTex": "", "conditionText": "", "tags": "exercices comp10"}, {"id": "fp-082", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{2}{3}\\right)^3", "answerTex": "\\left(\\dfrac{2}{3}\\right)^3=\\dfrac{2^3}{3^3}=\\dfrac{8}{27}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-083", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{3}{5}\\right)^2", "answerTex": "\\left(-\\dfrac{3}{5}\\right)^2=\\dfrac{(-3)^2}{5^2}=\\dfrac{9}{25}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-084", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{2}{7}\\right)^3", "answerTex": "\\left(-\\dfrac{2}{7}\\right)^3=\\dfrac{(-2)^3}{7^3}=-\\dfrac{8}{343}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-085", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{5}{2}\\right)^{-2}", "answerTex": "\\left(\\dfrac{5}{2}\\right)^{-2}=\\left(\\dfrac{2}{5}\\right)^2=\\dfrac{4}{25}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-086", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{4}{3}\\right)^{-2}", "answerTex": "\\left(-\\dfrac{4}{3}\\right)^{-2}=\\left(-\\dfrac{3}{4}\\right)^2=\\dfrac{9}{16}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-087", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2^3}{2^5}", "answerTex": "\\dfrac{2^3}{2^5}=2^{3-5}=2^{-2}=\\dfrac{1}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-088", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3^{-2}}{3^{-5}}", "answerTex": "\\dfrac{3^{-2}}{3^{-5}}=3^{-2-(-5)}=3^3=27", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-089", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{5^2\\times5^{-4}}{5^{-1}}", "answerTex": "\\dfrac{5^2\\times5^{-4}}{5^{-1}}=5^{2-4-(-1)}=5^{-1}=\\dfrac{1}{5}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-090", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{7^{-3}\\times7^5}{7^4}", "answerTex": "\\dfrac{7^{-3}\\times7^5}{7^4}=7^{-3+5-4}=7^{-2}=\\dfrac{1}{49}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-091", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2^4\\times2^{-1}}{2^{-3}}", "answerTex": "\\dfrac{2^4\\times2^{-1}}{2^{-3}}=2^{4-1-(-3)}=2^6=64", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-092", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{4}+\\left(\\dfrac{1}{2}\\right)^2", "answerTex": "\\dfrac{3}{4}+\\left(\\dfrac{1}{2}\\right)^2=\\dfrac{3}{4}+\\dfrac{1}{4}=1", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-093", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{5}{6}-\\left(\\dfrac{2}{3}\\right)^2", "answerTex": "\\dfrac{5}{6}-\\left(\\dfrac{2}{3}\\right)^2=\\dfrac{5}{6}-\\dfrac{4}{9}=\\dfrac{15}{18}-\\dfrac{8}{18}=\\dfrac{7}{18}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-094", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{3}{5}\\right)^2+\\dfrac{1}{10}", "answerTex": "\\left(\\dfrac{3}{5}\\right)^2+\\dfrac{1}{10}=\\dfrac{9}{25}+\\dfrac{1}{10}=\\dfrac{18}{50}+\\dfrac{5}{50}=\\dfrac{23}{50}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-095", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{1}{2}\\right)^3+\\dfrac{3}{8}", "answerTex": "\\left(-\\dfrac{1}{2}\\right)^3+\\dfrac{3}{8}=-\\dfrac{1}{8}+\\dfrac{3}{8}=\\dfrac{1}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-096", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2}{3}-\\left(-\\dfrac{1}{3}\\right)^2", "answerTex": "\\dfrac{2}{3}-\\left(-\\dfrac{1}{3}\\right)^2=\\dfrac{2}{3}-\\dfrac{1}{9}=\\dfrac{6}{9}-\\dfrac{1}{9}=\\dfrac{5}{9}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-097", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{2}{3}\\right)^2\\times\\dfrac{9}{8}", "answerTex": "\\left(\\dfrac{2}{3}\\right)^2\\times\\dfrac{9}{8}=\\dfrac{4}{9}\\times\\dfrac{9}{8}=\\dfrac{36}{72}=\\dfrac{1}{2}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-098", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{5}{2}\\right)^2\\times\\dfrac{4}{25}", "answerTex": "\\left(-\\dfrac{5}{2}\\right)^2\\times\\dfrac{4}{25}=\\dfrac{25}{4}\\times\\dfrac{4}{25}=1", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-099", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{7}\\times\\left(\\dfrac{14}{9}\\right)^2", "answerTex": "\\dfrac{3}{7}\\times\\left(\\dfrac{14}{9}\\right)^2=\\dfrac{3}{7}\\times\\dfrac{196}{81}=\\dfrac{588}{567}=\\dfrac{28}{27}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-100", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{4}{3}\\right)^{-1}\\times\\dfrac{8}{9}", "answerTex": "\\left(\\dfrac{4}{3}\\right)^{-1}\\times\\dfrac{8}{9}=\\dfrac{3}{4}\\times\\dfrac{8}{9}=\\dfrac{24}{36}=\\dfrac{2}{3}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-101", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{3}{4}\\right)^{-2}\\times\\dfrac{9}{16}", "answerTex": "\\left(-\\dfrac{3}{4}\\right)^{-2}\\times\\dfrac{9}{16}=\\left(-\\dfrac{4}{3}\\right)^2\\times\\dfrac{9}{16}=\\dfrac{16}{9}\\times\\dfrac{9}{16}=1", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-102", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{2}{5}\\right)^3\\div\\dfrac{4}{25}", "answerTex": "\\left(\\dfrac{2}{5}\\right)^3\\div\\dfrac{4}{25}=\\dfrac{8}{125}\\times\\dfrac{25}{4}=\\dfrac{200}{500}=\\dfrac{2}{5}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-103", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{3}{4}\\div\\left(\\dfrac{3}{2}\\right)^2", "answerTex": "\\dfrac{3}{4}\\div\\left(\\dfrac{3}{2}\\right)^2=\\dfrac{3}{4}\\div\\dfrac{9}{4}=\\dfrac{3}{4}\\times\\dfrac{4}{9}=\\dfrac{1}{3}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-104", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{2}{3}\\right)^2\\div\\left(-\\dfrac{4}{9}\\right)", "answerTex": "\\left(-\\dfrac{2}{3}\\right)^2\\div\\left(-\\dfrac{4}{9}\\right)=\\dfrac{4}{9}\\times\\left(-\\dfrac{9}{4}\\right)=-1", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-105", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(\\dfrac{5}{6}\\right)^{-1}\\div\\dfrac{9}{10}", "answerTex": "\\left(\\dfrac{5}{6}\\right)^{-1}\\div\\dfrac{9}{10}=\\dfrac{6}{5}\\times\\dfrac{10}{9}=\\dfrac{60}{45}=\\dfrac{4}{3}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-106", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{7}{8}\\div\\left(\\dfrac{7}{4}\\right)^{-1}", "answerTex": "\\dfrac{7}{8}\\div\\left(\\dfrac{7}{4}\\right)^{-1}=\\dfrac{7}{8}\\div\\dfrac{4}{7}=\\dfrac{7}{8}\\times\\dfrac{7}{4}=\\dfrac{49}{32}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-107", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{\\left(\\dfrac{2}{3}\\right)^2\\times\\left(\\dfrac{3}{4}\\right)^2}{\\left(\\dfrac{1}{2}\\right)^3}", "answerTex": "\\dfrac{\\left(\\dfrac{2}{3}\\right)^2\\times\\left(\\dfrac{3}{4}\\right)^2}{\\left(\\dfrac{1}{2}\\right)^3}=\\dfrac{\\dfrac{4}{9}\\times\\dfrac{9}{16}}{\\dfrac{1}{8}}=\\dfrac{\\dfrac{1}{4}}{\\dfrac{1}{8}}=2", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-108", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2^3}{3^2}\\times\\left(\\dfrac{3}{2}\\right)^2", "answerTex": "\\dfrac{2^3}{3^2}\\times\\left(\\dfrac{3}{2}\\right)^2=\\dfrac{8}{9}\\times\\dfrac{9}{4}=2", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-109", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{\\left(\\dfrac{2}{5}\\right)^{-2}}{\\left(\\dfrac{10}{3}\\right)^2}", "answerTex": "\\dfrac{\\left(\\dfrac{2}{5}\\right)^{-2}}{\\left(\\dfrac{10}{3}\\right)^2}=\\dfrac{\\left(\\dfrac{5}{2}\\right)^2}{\\dfrac{100}{9}}=\\dfrac{25}{4}\\times\\dfrac{9}{100}=\\dfrac{9}{16}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-110", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\left(-\\dfrac{3}{2}\\right)^2-\\dfrac{5}{4}", "answerTex": "\\left(-\\dfrac{3}{2}\\right)^2-\\dfrac{5}{4}=\\dfrac{9}{4}-\\dfrac{5}{4}=1", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}, {"id": "fp-111", "deck": "Fractions et puissances::Compétences::11 Puissances et fractions", "label": "Exercice", "prompt": "Calcule", "questionTex": "\\dfrac{2^{-3}+2^{-2}}{2^{-1}}", "answerTex": "\\dfrac{2^{-3}+2^{-2}}{2^{-1}}=\\dfrac{\\dfrac{1}{8}+\\dfrac{1}{4}}{\\dfrac{1}{2}}=\\dfrac{\\dfrac{3}{8}}{\\dfrac{1}{2}}=\\dfrac{3}{4}", "conditionTex": "", "conditionText": "", "tags": "exercices comp11"}];
+const STORE_KEY = 'minianki.fp.v1.progress';
+let selectedDeck = 'ALL';
+let mode = 'due';
+let session = [];
+let index = 0;
+let revealed = false;
+let progress = loadProgress();
+
+function loadProgress(){
+  try{return JSON.parse(localStorage.getItem(STORE_KEY)||'{}')}catch(e){return {}}
+}
+function saveProgress(){localStorage.setItem(STORE_KEY, JSON.stringify(progress))}
+function now(){return Date.now()}
+function dayMs(n){return n*24*60*60*1000}
+function minMs(n){return n*60*1000}
+function state(card){
+  return progress[card.id] || {reps:0, interval:0, ease:2.5, due:0, lapses:0, reviews:0, last:0};
+}
+function deckMatch(card, deck){return deck==='ALL' || card.deck===deck || card.deck.startsWith(deck+'::')}
+function visibleCards(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  return CARDS.filter(c => deckMatch(c, selectedDeck) && (!q || (c.deck+' '+c.label+' '+c.prompt+' '+c.questionTex+' '+c.answerTex+' '+c.tags).toLowerCase().includes(q)));
+}
+function dueCards(){return visibleCards().filter(c => state(c).due <= now()).sort((a,b)=>state(a).due-state(b).due)}
+function newCards(){return visibleCards().filter(c => !progress[c.id])}
+function buildSession(){
+  const all = visibleCards();
+  if(mode==='due') session = all.filter(c => state(c).due <= now()).sort((a,b)=>state(a).due-state(b).due);
+  else if(mode==='all') session = [...all].sort((a,b)=> (state(a).due - state(b).due) || a.id.localeCompare(b.id));
+  else session = [];
+  index = 0; revealed = false; render();
+}
+function allDecks(){
+  const set = new Set(['ALL']);
+  for(const c of CARDS){
+    const parts=c.deck.split('::');
+    for(let i=1;i<=parts.length;i++) set.add(parts.slice(0,i).join('::'));
+  }
+  return [...set].sort((a,b)=> a==='ALL'?-1:b==='ALL'?1:a.localeCompare(b,'fr'));
+}
+function renderDecks(){
+  const root=document.getElementById('deckTree'); root.innerHTML='';
+  const decks=allDecks();
+  for(const d of decks){
+    const btn=document.createElement('button');
+    const level=d==='ALL'?0:d.split('::').length-1;
+    btn.className='deck-btn deck-level-'+Math.min(level,3)+(d===selectedDeck?' active':'');
+    const count=CARDS.filter(c=>deckMatch(c,d)).length;
+    const name=d==='ALL'?'Tous les decks':d.split('::').at(-1);
+    btn.innerHTML=`<span class="deck-name">${escapeHtml(name)}</span><span class="deck-count">${count}</span>`;
+    btn.onclick=()=>{selectedDeck=d; 
+// Mobile deck drawer
+const sidebarEl = document.getElementById('sidebar');
+const mobileDeckToggle = document.getElementById('mobileDeckToggle');
+const mobileScrim = document.getElementById('mobileScrim');
+function setMobileDrawer(open){
+  if(!sidebarEl || !mobileDeckToggle || !mobileScrim) return;
+  sidebarEl.classList.toggle('open', open);
+  mobileScrim.classList.toggle('show', open);
+  mobileDeckToggle.setAttribute('aria-expanded', String(open));
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+if(mobileDeckToggle) mobileDeckToggle.addEventListener('click', ()=>setMobileDrawer(!sidebarEl.classList.contains('open')));
+if(mobileScrim) mobileScrim.addEventListener('click', ()=>setMobileDrawer(false));
+const deckTreeElForMobile = document.getElementById('deckTree');
+if(deckTreeElForMobile) deckTreeElForMobile.addEventListener('click', e=>{ if(e.target.closest('.deck-btn') && window.innerWidth<=860) setMobileDrawer(false); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape') setMobileDrawer(false); });
+window.addEventListener('resize', ()=>{ if(window.innerWidth>860) setMobileDrawer(false); });
+
+renderDecks(); buildSession();};
+    root.appendChild(btn);
+  }
+}
+function renderStats(){
+  const cards=visibleCards();
+  document.getElementById('statTotal').textContent=cards.length;
+  document.getElementById('statDue').textContent=cards.filter(c=>state(c).due<=now()).length;
+  document.getElementById('statNew').textContent=cards.filter(c=>!progress[c.id]).length;
+}
+function render(){
+  renderStats();
+  const heading=selectedDeck==='ALL'?'Tous les decks':selectedDeck.split('::').at(-1);
+  document.getElementById('deckHeading').textContent=heading;
+  document.getElementById('deckDescription').textContent=`${visibleCards().length} cartes dans la sélection. Les progrès sont sauvegardés dans ce navigateur.`;
+  document.getElementById('browser').classList.toggle('show', mode==='browse');
+  document.getElementById('studyWrap').style.display = mode==='browse'?'none':'grid';
+  if(mode==='browse'){renderBrowser(); return;}
+  const cardEl=document.getElementById('card');
+  if(!session.length){
+    cardEl.classList.remove('revealed');
+    document.getElementById('cardDeck').textContent='Session vide';
+    document.getElementById('cardState').textContent='';
+    document.getElementById('prompt').textContent=mode==='due'?'Aucune carte due':'Aucune carte dans ce deck';
+    document.getElementById('frontMath').innerHTML='';
+    document.getElementById('backMath').innerHTML='';
+    document.getElementById('condition').innerHTML='';
+    document.getElementById('controls').innerHTML='<button class="btn secondary" onclick="mode=\'all\'; setModeUI(); buildSession();">Étudier tout</button>';
+    document.getElementById('sessionInfo').textContent='Session terminée';
+    document.getElementById('progressText').textContent='0/0';
+    document.getElementById('progressBar').style.width='100%';
+    return;
+  }
+  const c=session[index]; const s=state(c);
+  cardEl.classList.toggle('revealed', revealed);
+  document.getElementById('cardDeck').textContent=c.deck.replace(/^Fractions et puissances::/, '');
+  document.getElementById('cardState').textContent=s.reps?'Revue':'Nouvelle';
+  document.getElementById('prompt').textContent=c.prompt || c.label;
+  document.getElementById('frontMath').innerHTML=renderTex(c.questionTex);
+  document.getElementById('backMath').innerHTML=renderTex(c.answerTex);
+  const cond = c.conditionTex ? `<span>Condition : </span><span class="math">${renderTex(c.conditionTex)}</span>` : (c.conditionText ? `Condition : ${escapeHtml(c.conditionText)}` : '');
+  document.getElementById('condition').innerHTML=cond;
+  renderControls();
+  document.getElementById('sessionInfo').textContent=mode==='due'?'Révision':'Étude complète';
+  document.getElementById('progressText').textContent=(index+1)+'/'+session.length;
+  document.getElementById('progressBar').style.width=((index)/Math.max(1,session.length)*100)+'%';
+}
+function renderControls(){
+  const el=document.getElementById('controls');
+  if(!revealed) el.innerHTML='<button class="btn" id="showAnswer">Afficher la réponse</button>';
+  else el.innerHTML=`
+    <button class="btn again" data-rate="again">À revoir</button>
+    <button class="btn hard" data-rate="hard">Difficile</button>
+    <button class="btn good" data-rate="good">Bien</button>
+    <button class="btn easy" data-rate="easy">Facile</button>`;
+  const show=document.getElementById('showAnswer'); if(show) show.onclick=()=>{revealed=true; render();};
+  el.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>rate(b.dataset.rate));
+}
+function rate(rating){
+  const c=session[index]; let s={...state(c)};
+  const currentInterval = Math.max(0, Number(s.interval)||0);
+  if(rating==='again'){
+    s.reps=0; s.interval=0; s.ease=Math.max(1.3,(s.ease||2.5)-0.2); s.due=now()+minMs(10); s.lapses=(s.lapses||0)+1;
+  } else if(rating==='hard'){
+    s.reps=(s.reps||0)+1; s.interval=Math.max(1, Math.round(currentInterval?currentInterval*1.2:1)); s.ease=Math.max(1.3,(s.ease||2.5)-0.15); s.due=now()+dayMs(s.interval);
+  } else if(rating==='good'){
+    s.reps=(s.reps||0)+1;
+    if(s.reps===1) s.interval=1; else if(s.reps===2) s.interval=3; else s.interval=Math.max(4, Math.round(currentInterval*(s.ease||2.5)));
+    s.due=now()+dayMs(s.interval);
+  } else if(rating==='easy'){
+    s.reps=(s.reps||0)+1; s.ease=(s.ease||2.5)+0.15;
+    s.interval=s.reps===1?4:Math.max(5, Math.round((currentInterval||1)*s.ease*1.3));
+    s.due=now()+dayMs(s.interval);
+  }
+  s.reviews=(s.reviews||0)+1; s.last=now(); progress[c.id]=s; saveProgress();
+  index++;
+  if(index>=session.length){ session=[]; toast('Session terminée'); }
+  revealed=false; render();
+}
+function renderBrowser(){
+  const list=document.getElementById('browserList'); const cards=visibleCards(); list.innerHTML='';
+  document.getElementById('browserTitle').textContent='Cartes du deck';
+  document.getElementById('browserCount').textContent=cards.length+' cartes';
+  for(const c of cards){
+    const s=state(c); const due=s.due<=now()?'due':new Date(s.due).toLocaleDateString('fr-FR');
+    const div=document.createElement('div'); div.className='row';
+    div.innerHTML=`<div><strong>${escapeHtml(c.prompt||c.label)}</strong><div class="muted">${escapeHtml(c.deck.replace(/^Fractions et puissances::/,''))}</div></div><div><div class="mini-math">${renderTex(c.questionTex)}</div><div class="mini-math">${renderTex(c.answerTex)}</div></div><div class="muted">${s.reps?'revue '+s.reps:'nouvelle'}<br>${due}</div>`;
+    list.appendChild(div);
+  }
+}
+function setModeUI(){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('active', p.dataset.mode===mode));
+}
+document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{mode=p.dataset.mode; setModeUI(); buildSession();});
+document.getElementById('search').addEventListener('input', ()=>buildSession());
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(e.code==='Space'){e.preventDefault(); if(!revealed){revealed=true; render();} else rate('good');}
+  if(revealed && ['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
+    const map={Digit1:'again',Digit2:'hard',Digit3:'good',Digit4:'easy'}; rate(map[e.code]);
+  }
+});
+document.getElementById('exportProgress').onclick=()=>{
+  const blob=new Blob([JSON.stringify({version:1, exportedAt:new Date().toISOString(), progress},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='minianki_progress_fractions_puissances.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById('importProgress').onclick=()=>document.getElementById('progressFile').click();
+document.getElementById('progressFile').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{const obj=JSON.parse(await f.text()); progress=obj.progress||obj; saveProgress(); toast('Progrès importés'); buildSession();}
+  catch(err){toast('Import impossible');}
+};
+document.getElementById('resetProgress').onclick=()=>{
+  if(confirm('Réinitialiser tout le progrès de ce deck ?')){progress={}; saveProgress(); buildSession(); toast('Progrès réinitialisé');}
+};
+function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800)}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function renderTex(input){
+  if(!input) return '';
+  let tex=String(input).trim();
+  tex=tex.replace(/^\\\(/,'').replace(/\\\)$/,'');
+  tex=tex.replace(/\\left/g,'').replace(/\\right/g,'');
+  tex=tex.replace(/\\,/g,' ');
+  const parser = new TexParser(tex);
+  return parser.parseUntil();
+}
+class TexParser{
+  constructor(s){this.s=s;this.i=0;}
+  eof(){return this.i>=this.s.length}
+  peek(){return this.s[this.i]}
+  next(){return this.s[this.i++]}
+  parseUntil(stop){
+    let out='';
+    while(!this.eof()){
+      if(stop && this.peek()===stop){this.i++; break;}
+      const ch=this.next();
+      if(ch==='\\') out += this.command();
+      else if(ch==='^') out += '<sup>'+this.readScript()+'</sup>';
+      else if(ch==='_') out += '<sub>'+this.readScript()+'</sub>';
+      else if(ch==='{') out += this.parseUntil('}');
+      else if(ch==='}') { if(stop) break; else out += ''; }
+      else out += escapeHtml(ch);
+    }
+    return out.replace(/\s+/g,' ').trim();
+  }
+  readCommandName(){let name=''; while(!this.eof() && /[A-Za-z]/.test(this.peek())) name+=this.next(); return name || this.next();}
+  command(){
+    const name=this.readCommandName();
+    if(name==='dfrac'||name==='frac'){
+      const num=this.readGroup(); const den=this.readGroup();
+      return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
+    }
+    if(name==='sqrt'){
+      let degree=''; if(this.peek()==='['){this.next(); degree=this.readUntilBracket();}
+      const body=this.readGroup(); return `<span>${degree?`<sup>${degree}</sup>`:''}√(${body})</span>`;
+    }
+    if(name==='underbrace'){
+      const base=this.readGroup(); let label='';
+      if(this.peek()==='_'){this.next(); label=this.readScript();}
+      return `<span class="under"><span class="base">${base}</span>${label?`<span class="label">${label}</span>`:''}</span>`;
+    }
+    if(name==='text') return `<span class="tex-text">${this.readGroup()}</span>`;
+    if(name==='mathbb'){
+      const g=this.readGroupText().trim(); return ({N:'ℕ',Z:'ℤ',Q:'ℚ',R:'ℝ',C:'ℂ'}[g]||escapeHtml(g));
+    }
+    const map={times:'×',div:'÷',cdot:'·',cdots:'⋯',ldots:'…',neq:'≠',geq:'≥',leq:'≤',in:'∈',notin:'∉',iff:'⇔',Rightarrow:'⇒',Longrightarrow:'⟹',sqrt:'√',pm:'±',le:'≤',ge:'≥'};
+    return map[name] || escapeHtml('\\'+name);
+  }
+  readGroup(){
+    while(!this.eof() && /\s/.test(this.peek())) this.next();
+    if(this.peek()==='{'){this.next(); return this.parseUntil('}');}
+    return this.eof()?'':escapeHtml(this.next());
+  }
+  readGroupText(){
+    while(!this.eof() && /\s/.test(this.peek())) this.next();
+    if(this.peek()!=='{') return this.eof()?'':this.next();
+    this.next(); let depth=1, out='';
+    while(!this.eof() && depth){const ch=this.next(); if(ch==='{') depth++; else if(ch==='}') depth--; if(depth) out+=ch;}
+    return out;
+  }
+  readScript(){
+    while(!this.eof() && /\s/.test(this.peek())) this.next();
+    if(this.peek()==='{'){this.next(); return this.parseUntil('}');}
+    if(this.peek()==='\\') {this.next(); return this.command();}
+    return this.eof()?'':escapeHtml(this.next());
+  }
+  readUntilBracket(){let out=''; while(!this.eof() && this.peek()!==']') out+=escapeHtml(this.next()); if(this.peek()===']') this.next(); return out;}
+}
+
+// Mobile deck drawer
+const sidebarEl = document.getElementById('sidebar');
+const mobileDeckToggle = document.getElementById('mobileDeckToggle');
+const mobileScrim = document.getElementById('mobileScrim');
+function setMobileDrawer(open){
+  if(!sidebarEl || !mobileDeckToggle || !mobileScrim) return;
+  sidebarEl.classList.toggle('open', open);
+  mobileScrim.classList.toggle('show', open);
+  mobileDeckToggle.setAttribute('aria-expanded', String(open));
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+if(mobileDeckToggle) mobileDeckToggle.addEventListener('click', ()=>setMobileDrawer(!sidebarEl.classList.contains('open')));
+if(mobileScrim) mobileScrim.addEventListener('click', ()=>setMobileDrawer(false));
+const deckTreeElForMobile = document.getElementById('deckTree');
+if(deckTreeElForMobile) deckTreeElForMobile.addEventListener('click', e=>{ if(e.target.closest('.deck-btn') && window.innerWidth<=860) setMobileDrawer(false); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape') setMobileDrawer(false); });
+window.addEventListener('resize', ()=>{ if(window.innerWidth>860) setMobileDrawer(false); });
+
+renderDecks(); buildSession();
+</script>
+</body>
+</html>
