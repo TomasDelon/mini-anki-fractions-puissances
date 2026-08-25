@@ -3,7 +3,7 @@ name: Deploy Algèbre PWA
 on:
   push:
     paths:
-      - 'deploy/algebre-src.b64.part*'
+      - 'deploy/algebre-src.ready'
       - '.github/workflows/deploy-algebre.yml'
   workflow_dispatch:
 
@@ -30,11 +30,11 @@ jobs:
         id: payload
         shell: bash
         run: |
-          if compgen -G 'deploy/algebre-src.b64.part*' > /dev/null; then
+          if [[ -f deploy/algebre-src.ready ]] && compgen -G 'deploy/algebre-src.b64.part*' > /dev/null; then
             echo 'present=true' >> "$GITHUB_OUTPUT"
           else
             echo 'present=false' >> "$GITHUB_OUTPUT"
-            echo 'No deployment payload found; nothing to do.'
+            echo 'No complete deployment payload found; nothing to do.'
           fi
 
       - name: Reconstruct source archive
@@ -62,7 +62,7 @@ jobs:
           rm -rf algebre
           mkdir -p algebre
           cp -R /tmp/algebre-src/dist/. algebre/
-          rm -f deploy/algebre-src.b64.part*
+          rm -f deploy/algebre-src.b64.part* deploy/algebre-src.ready
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
