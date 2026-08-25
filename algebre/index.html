@@ -11,7 +11,26 @@
     <title>Algèbre</title>
     <script type="module" crossorigin src="/mini-anki-fractions-puissances/algebre/assets/index-tdxDb94U.js"></script>
     <link rel="stylesheet" crossorigin href="/mini-anki-fractions-puissances/algebre/assets/index-Dd6nMEMI.css">
-  <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script></head>
+    <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest">
+    <script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script>
+    <style>
+      /* The LaTeX labels inside keyboard buttons are presentation-only.
+         On desktop MathLive's <math-field> captures pointer events before the
+         parent button receives its click. Make the whole visible key surface
+         belong to the button instead. */
+      .keyboard .key-math-label,
+      .keyboard .key math-field {
+        pointer-events: none !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+      }
+
+      .keyboard .key {
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+    </style>
+  </head>
   <body>
     <div id="app"></div>
   </body>
