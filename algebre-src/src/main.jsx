@@ -1,4 +1,4 @@
-import { h, Fragment, render } from 'preact';
+import { h, render } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { MathfieldElement } from 'mathlive';
 import 'mathlive/fonts.css';
@@ -12,8 +12,8 @@ import {
   hydrateDerivationRows,
   serializeDerivationRows
 } from './trainer/core.js';
-import { getKeyDefinition, getKeyboardProfile } from './trainer/keyboardProfiles.js';
 import { DerivationEditor, RelationMark } from './trainer/DerivationEditor.jsx';
+import { MathKeyboard } from './trainer/MathKeyboard.jsx';
 import { StaticMath, configureMathField } from './trainer/MathView.jsx';
 
 MathfieldElement.soundsDirectory = null;
@@ -56,67 +56,6 @@ function Home({onChoose,onResume}){
       </button>)}
     </div>
   </main>;
-}
-
-function Key({dataKey,label,math=true,className='',onClick,ariaLabel}){
-  return <button type="button" data-key={dataKey} aria-label={ariaLabel} class={`key ${math?'key--math':''} ${className}`} onPointerDown={e=>e.preventDefault()} onClick={onClick}>{math?<StaticMath latex={label}/>:label}</button>;
-}
-
-function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpty,onSetRelation,profileId=PACK.keyboard.profile}){
-  const profile=getKeyboardProfile(profileId);
-  const insert=(latex,opts={})=>{
-    if(!field)return;
-    field.insert(latex,{insertionMode:'replaceSelection',selectionMode:'after',mode:'math',focus:true,...opts});
-    field.mode='math'; field.focus(); setSelectionMode(false);
-  };
-  const structure=(kind)=>{
-    if(!field)return;
-    const map={fraction:'\\frac{#0}{#?}',sqrt:'\\sqrt{#0}',parentheses:'\\left(#0\\right)',abs:'\\left|#0\\right|'};
-    field.insert(map[kind],{insertionMode:'replaceSelection',selectionMode:'placeholder',mode:'math',focus:true});
-    field.mode='math'; field.focus(); setSelectionMode(false);
-  };
-  const square=()=>{
-    if(!field)return;
-    field.insert('#@^{2}',{insertionMode:'replaceSelection',selectionMode:'after',mode:'math',focus:true});
-    field.mode='math';field.focus();setSelectionMode(false);
-  };
-  const move=dir=>{
-    if(!field)return;
-    const cmd=dir==='left'?(selectionMode?'extendSelectionBackward':'moveToPreviousChar'):dir==='right'?(selectionMode?'extendSelectionForward':'moveToNextChar'):dir==='up'?'moveUp':'moveDown';
-    field.executeCommand(cmd); field.focus();
-  };
-  const erase=()=>{
-    if(onDeleteEmpty())return;
-    if(field){field.executeCommand('deleteBackward');field.focus();}
-    setSelectionMode(false);
-  };
-  const enter=()=>{onEnter();setSelectionMode(false);};
-  const textOr=()=>{
-    if(!field)return;
-    field.insert('\\text{ ou }',{insertionMode:'replaceSelection',selectionMode:'after',mode:'math',focus:true});
-    field.mode='math';field.focus();setSelectionMode(false);
-  };
-  const runAction=definition=>{
-    const action=definition.action;
-    if(action.type==='insert') return insert(action.latex);
-    if(action.type==='structure') return structure(action.kind);
-    if(action.type==='square') return square();
-    if(action.type==='move') return move(action.direction);
-    if(action.type==='erase') return erase();
-    if(action.type==='enter') return enter();
-    if(action.type==='text-or') return textOr();
-    if(action.type==='toggle-selection') return setSelectionMode(value=>!value);
-    if(action.type==='set-relation'&&onSetRelation) return onSetRelation(action.relation);
-  };
-  const renderKey=id=>{
-    const definition=getKeyDefinition(id);
-    const active=id==='select'&&selectionMode;
-    return <Key key={id} dataKey={definition.id} label={definition.label} math={definition.math} ariaLabel={definition.ariaLabel} className={`${definition.className||''} ${active?'key--active':''}`} onClick={()=>runAction(definition)}/>;
-  };
-  return <div class="keyboard" aria-label="Clavier mathématique" data-profile={profile.id}>
-    <div class="key-grid">{profile.grid.map(renderKey)}</div>
-    <div class="key-bottom-row">{profile.bottom.map(renderKey)}</div>
-  </div>;
 }
 
 function Correction({exercise,workspace}){
@@ -208,7 +147,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
       {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={()=>setShowCorrection(v=>!v)}>{showCorrection?'Masquer la correction':'Voir une correction'}</button>}
     </div>
     {showCorrection&&<Correction exercise={exercise} workspace={workspace}/>} 
-    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} profileId={PACK.keyboard.profile}/>} 
+    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} keyboardConfig={PACK.keyboard}/>} 
   </main>;
 }
 
