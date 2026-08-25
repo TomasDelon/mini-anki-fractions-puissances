@@ -10,6 +10,10 @@ function normalizeKeyboardConfig(keyboard){
   return Object.freeze({...keyboard,extraKeys});
 }
 
+function normalizeSessionConfig(session={}){
+  return Object.freeze({legacyKeys:Object.freeze([...(session.legacyKeys||[])])});
+}
+
 function assertKeyboardConfig(keyboard){
   if(!keyboard?.profile) throw new Error('A trainer pack needs a keyboard profile');
   const profile=getKeyboardProfile(keyboard.profile);
@@ -43,6 +47,7 @@ export function defineTrainerPack(config){
     categories:Object.freeze([...config.categories]),
     categoryInfo:freezeRecord(config.categoryInfo),
     keyboard:normalizeKeyboardConfig(config.keyboard),
+    session:normalizeSessionConfig(config.session),
     pedagogy:config.pedagogy ? Object.freeze({...config.pedagogy}) : Object.freeze({})
   });
 }
