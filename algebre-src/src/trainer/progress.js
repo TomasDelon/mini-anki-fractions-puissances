@@ -112,11 +112,13 @@ export function recordCompletion(pack,progress,exercise,attempt={},now=new Date(
 export function categoryMastery(pack,progress,category){
   const normalized=normalizeProgress(pack,progress);
   const ids=pack.categorySkills?.[category]||[];
-  const observed=ids.map(id=>normalized.skills[id]).filter(skill=>skill&&skill.attempts>0);
+  if(!ids.length) return null;
+  const states=ids.map(id=>normalized.skills[id]).filter(Boolean);
+  const observed=states.filter(skill=>skill.attempts>0);
   if(!observed.length) return null;
-  const mastery=observed.reduce((sum,skill)=>sum+skill.mastery,0)/observed.length;
+  const mastery=states.reduce((sum,skill)=>sum+(skill.attempts>0?skill.mastery:0),0)/ids.length;
   const attempts=observed.reduce((sum,skill)=>sum+skill.attempts,0);
-  return {mastery,attempts};
+  return {mastery,attempts,coverage:observed.length/ids.length};
 }
 
 export function weakestSkills(pack,progress,limit=3){
