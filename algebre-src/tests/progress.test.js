@@ -60,13 +60,20 @@ describe('generic skill progress',()=>{
     expect(calculationStore.load().completed).toBe(0);
   });
 
-  test('category mastery and weakest skills are derived from observed work',()=>{
+  test('category progress is evidence-weighted and exposes coverage',()=>{
     const exercise=CALCUL_LITTERAL_3EME_PACK.generateExercise('develop',77);
     const progress=recordCompletion(CALCUL_LITTERAL_3EME_PACK,createEmptyProgress(CALCUL_LITTERAL_3EME_PACK),exercise,{mistakes:0},new Date('2026-08-25T12:00:00Z'));
     const category=categoryMastery(CALCUL_LITTERAL_3EME_PACK,progress,'develop');
-    expect(category.mastery).toBeGreaterThan(0.8);
+    expect(category.rawMastery).toBeGreaterThan(0.8);
+    expect(category.mastery).toBeGreaterThan(0.2);
+    expect(category.mastery).toBeLessThan(0.4);
+    expect(category.coverage).toBe(1);
     expect(category.attempts).toBe(2);
-    expect(categoryMastery(CALCUL_LITTERAL_3EME_PACK,progress,'reduce')).not.toBeNull();
+
+    const reduce=categoryMastery(CALCUL_LITTERAL_3EME_PACK,progress,'reduce');
+    expect(reduce.coverage).toBe(0.5);
+    expect(reduce.mastery).toBeLessThan(category.mastery);
+
     const weakest=weakestSkills(CALCUL_LITTERAL_3EME_PACK,progress,1);
     expect(weakest).toHaveLength(1);
     expect(weakest[0].id).toBe('collect-like-terms');
