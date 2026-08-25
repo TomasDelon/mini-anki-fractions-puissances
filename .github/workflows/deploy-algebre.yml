@@ -42,21 +42,47 @@ jobs:
 
       - name: Algebra and generator tests
         working-directory: algebre-src
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee unit-test.log
+
+      - name: Upload unit-test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: algebre-unit-test-log
+          path: algebre-src/unit-test.log
+          if-no-files-found: ignore
 
       - name: Install browser engines
+        if: success()
         working-directory: algebre-src
         run: npx playwright install --with-deps chromium webkit
 
       - name: Browser ergonomics tests
+        if: success()
         working-directory: algebre-src
-        run: npm run test:e2e
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee e2e-test.log
+
+      - name: Upload browser-test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: algebre-e2e-test-log
+          path: algebre-src/e2e-test.log
+          if-no-files-found: ignore
 
       - name: Build production PWA
+        if: success()
         working-directory: algebre-src
         run: npm run build
 
       - name: Publish tested build
+        if: success()
         shell: bash
         run: |
           git pull --rebase origin main
