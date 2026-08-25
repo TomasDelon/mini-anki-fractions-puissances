@@ -42,6 +42,12 @@ export const KEYBOARD_PROFILES = Object.freeze({
     bottom:Object.freeze(['select','left','right','backspace','enter']),
     compact:Object.freeze(['square','parentheses','sqrt','fraction','abs','pm','or'])
   }),
+  'calcul-litteral-3eme':Object.freeze({
+    id:'calcul-litteral-3eme',
+    grid:Object.freeze(['7','8','9','plus','minus','times','4','5','6','x','square','parentheses','1','2','3','0','fraction','equals']),
+    bottom:Object.freeze(['select','left','right','backspace','enter']),
+    compact:Object.freeze(['square','parentheses','fraction'])
+  }),
   'derivation-relations':Object.freeze({
     id:'derivation-relations',
     grid:Object.freeze(['relationEquals','relationIff','relationImplies']),
