@@ -1,11 +1,13 @@
 import { CALCUL_LITTERAL_3EME_PACK } from './calculLitteral3eme.js';
 import { EQUATIONS_3EME_PACK } from './equations3eme.js';
+import { FRACTIONS_PACK } from './fractions.js';
 
 export const DEFAULT_TRAINER_PACK_ID=EQUATIONS_3EME_PACK.id;
 
 export const TRAINER_PACKS=Object.freeze({
   [EQUATIONS_3EME_PACK.id]:EQUATIONS_3EME_PACK,
-  [CALCUL_LITTERAL_3EME_PACK.id]:CALCUL_LITTERAL_3EME_PACK
+  [CALCUL_LITTERAL_3EME_PACK.id]:CALCUL_LITTERAL_3EME_PACK,
+  [FRACTIONS_PACK.id]:FRACTIONS_PACK
 });
 
 export function getTrainerPack(id){
