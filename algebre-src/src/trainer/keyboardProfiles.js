@@ -44,8 +44,8 @@ export const KEYBOARD_PROFILES = Object.freeze({
   }),
   'calcul-litteral-3eme':Object.freeze({
     id:'calcul-litteral-3eme',
-    grid:Object.freeze(['7','8','9','plus','minus','times','4','5','6','x','square','parentheses','1','2','3','0','fraction','equals']),
-    bottom:Object.freeze(['select','left','right','backspace','enter']),
+    grid:Object.freeze(['7','8','9','plus','minus','times','4','5','6','x','square','parentheses','1','2','3','0','fraction','up']),
+    bottom:Object.freeze(['select','left','right','down','backspace','enter']),
     compact:Object.freeze(['square','parentheses','fraction'])
   }),
   'derivation-relations':Object.freeze({
