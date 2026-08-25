@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createAttemptTimer } from './attemptTimer.js';
 import { createDerivationRow, cycleRelation, hydrateDerivationRows, serializeDerivationRows } from './core.js';
+import {
+  canRedoDerivation,
+  canUndoDerivation,
+  commitDerivationHistory,
+  createDerivationHistory,
+  redoDerivationHistory,
+  resetDerivationHistory,
+  undoDerivationHistory
+} from './derivationHistory.js';
 import { completionHintCost, createHintSequence, revealHintCount, visibleHints } from './hints.js';
 import { resolveExerciseKeyboard, resolveExerciseWorkspace } from './pack.js';
 import { categoryMastery, createProgressStore } from './progress.js';
@@ -47,6 +56,13 @@ function TrainerHome({pack,sessionStore,progressStore,onChoose,onResume,onReview
   </main>;
 }
 
+function HistoryControls({undoEnabled,redoEnabled,onUndo,onRedo}){
+  return <div class="history-controls" aria-label="Historique">
+    <button type="button" aria-label="Annuler" disabled={!undoEnabled} onClick={onUndo}>↶</button>
+    <button type="button" aria-label="Rétablir" disabled={!redoEnabled} onClick={onRedo}>↷</button>
+  </div>;
+}
+
 function HintPanel({hints}){
   if(!hints.length)return null;
   return <div class="hint-panel" aria-live="polite">
@@ -83,12 +99,19 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
   const [selectionMode,setSelectionMode]=useState(false);
   const [mistakes,setMistakes]=useState(()=>Math.max(0,Math.floor(resumedAttempt.mistakes||0)));
   const [recent,setRecent]=useState(()=>[recentExerciseEntry(initialSeed,exercise)]);
+  const [,setHistoryRevision]=useState(0);
   const nextId=useRef(Math.max(1,...rows.map(row=>row.id+1)));
   const fields=useRef(new Map());
+  const rowsRef=useRef(rows);
+  const activeIdRef=useRef(activeId);
+  const historyRef=useRef(null);
   const attemptTimer=useRef(null);
   const completionRecorded=useRef(false);
   const sessionSnapshot=useRef(null);
+  if(!historyRef.current)historyRef.current=createDerivationHistory({rows,activeId});
   if(!attemptTimer.current)attemptTimer.current=createAttemptTimer({elapsedMs:resumedAttempt.elapsedMs||0});
+  rowsRef.current=rows;
+  activeIdRef.current=activeId;
   sessionSnapshot.current={category,seed,rows,mistakes,hintCount,fullCorrectionUsed,mode,reviewTargetSkill};
 
   const persistSession=()=>{
@@ -139,35 +162,69 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
     if(field){fields.current.set(id,field);if(id===activeId)setActiveField(field);}
     else{fields.current.delete(id);if(id===activeId)setActiveField(null);}
   };
-  const edit=(id,value)=>{setRows(old=>old.map(row=>row.id===id?{...row,value}:row));setFeedback({kind:'editing'});setShowCorrection(false);};
-  const focus=(id,field)=>{setActiveId(id);setActiveField(field);configureMathField(field);};
+  const resetEditingState=()=>{setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);};
+  const focusRowEnd=id=>requestAnimationFrame(()=>{
+    const field=fields.current.get(id);
+    if(field){setActiveField(field);field.focus();field.executeCommand('moveToMathfieldEnd');}
+  });
+  const applyHistorySnapshot=snapshot=>{
+    const nextActive=snapshot.activeId??snapshot.rows[0]?.id??0;
+    rowsRef.current=snapshot.rows;activeIdRef.current=nextActive;
+    setRows(snapshot.rows);setActiveId(nextActive);setActiveField(null);resetEditingState();
+    setHistoryRevision(value=>value+1);focusRowEnd(nextActive);
+  };
+  const commitRows=(nextRows,nextActive=activeIdRef.current)=>{
+    const resolvedActive=nextRows.some(row=>row.id===nextActive)?nextActive:(nextRows[0]?.id??0);
+    historyRef.current=commitDerivationHistory(historyRef.current,{rows:nextRows,activeId:resolvedActive});
+    const snapshot=historyRef.current.present;
+    rowsRef.current=snapshot.rows;activeIdRef.current=snapshot.activeId??resolvedActive;
+    setRows(snapshot.rows);setActiveId(activeIdRef.current);setHistoryRevision(value=>value+1);
+    return snapshot;
+  };
+  const undo=()=>{
+    if(feedback.kind==='success')return;
+    const next=undoDerivationHistory(historyRef.current);
+    if(next===historyRef.current)return;
+    historyRef.current=next;applyHistorySnapshot(next.present);
+  };
+  const redo=()=>{
+    if(feedback.kind==='success')return;
+    const next=redoDerivationHistory(historyRef.current);
+    if(next===historyRef.current)return;
+    historyRef.current=next;applyHistorySnapshot(next.present);
+  };
+  const edit=(id,value)=>{
+    commitRows(rowsRef.current.map(row=>row.id===id?{...row,value}:row),activeIdRef.current);
+    setFeedback({kind:'editing'});setShowCorrection(false);
+  };
+  const focus=(id,field)=>{activeIdRef.current=id;setActiveId(id);setActiveField(field);configureMathField(field);};
   const directPointer=()=>setSelectionMode(false);
   const changeRelation=id=>{
     if(workspace.relationMode!=='student')return;
-    setRows(old=>old.map(row=>row.id===id?{...row,relationBefore:cycleRelation(row.relationBefore,workspace)}:row));
+    commitRows(rowsRef.current.map(row=>row.id===id?{...row,relationBefore:cycleRelation(row.relationBefore,workspace)}:row),activeIdRef.current);
     setFeedback({kind:'editing'});setShowCorrection(false);
   };
   const setActiveRelation=relation=>{
     if(workspace.relationMode!=='student'||!workspace.allowedRelations.includes(relation))return;
-    setRows(old=>old.map(row=>row.id===activeId?{...row,relationBefore:relation}:row));
+    commitRows(rowsRef.current.map(row=>row.id===activeIdRef.current?{...row,relationBefore:relation}:row),activeIdRef.current);
     setFeedback({kind:'editing'});setShowCorrection(false);
   };
-  const addAfter=(id=activeId)=>{
-    if(rows.length>=maxRows)return;
-    const at=rows.findIndex(row=>row.id===id),position=at<0?rows.length:at+1,newId=nextId.current++;
-    setRows(old=>[...old.slice(0,position),createDerivationRow(newId,'',workspace),...old.slice(position)]);
-    setActiveId(newId);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
-    requestAnimationFrame(()=>fields.current.get(newId)?.focus());
+  const addAfter=(id=activeIdRef.current)=>{
+    const current=rowsRef.current;
+    if(current.length>=maxRows)return;
+    const at=current.findIndex(row=>row.id===id),position=at<0?current.length:at+1,newId=nextId.current++;
+    const nextRows=[...current.slice(0,position),createDerivationRow(newId,'',workspace),...current.slice(position)];
+    commitRows(nextRows,newId);setActiveField(null);resetEditingState();focusRowEnd(newId);
   };
   const deleteEmpty=id=>{
-    if(rows.length<=1)return false;
-    const at=rows.findIndex(row=>row.id===id);if(at<0||rows[at].value.trim()!=='')return false;
-    const target=rows[Math.max(0,at-1)];
-    setRows(old=>old.filter(row=>row.id!==id));setActiveId(target.id);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
-    requestAnimationFrame(()=>{const field=fields.current.get(target.id);if(field){setActiveField(field);field.focus();field.executeCommand('moveToMathfieldEnd');}});return true;
+    const current=rowsRef.current;
+    if(current.length<=1)return false;
+    const at=current.findIndex(row=>row.id===id);if(at<0||current[at].value.trim()!=='')return false;
+    const target=current[Math.max(0,at-1)];
+    commitRows(current.filter(row=>row.id!==id),target.id);setActiveField(null);resetEditingState();focusRowEnd(target.id);return true;
   };
   const verify=()=>{
-    const result=pack.validateExercise(exercise,rows);
+    const result=pack.validateExercise(exercise,rowsRef.current);
     if(result.kind==='error')setMistakes(value=>value+1);
     if(result.kind==='success'&&!completionRecorded.current){
       completionRecorded.current=true;
@@ -188,11 +245,13 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
   const resetForChoice=choice=>{
     const nextSeed=choice.seed,candidate=choice.exercise;
     const nextWorkspace=resolveExerciseWorkspace(pack,candidate),id=nextId.current++;
+    const nextRows=[createDerivationRow(id,'',nextWorkspace)];
     setRecent(old=>[...old.slice(-6),recentExerciseEntry(nextSeed,candidate)]);
-    setCategory(candidate.category);
-    setSeed(nextSeed);
-    setRows([createDerivationRow(id,'',nextWorkspace)]);
-    setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setFullCorrectionUsed(false);setHintCount(0);setSelectionMode(false);setMistakes(0);
+    setCategory(candidate.category);setSeed(nextSeed);
+    historyRef.current=resetDerivationHistory(historyRef.current,{rows:nextRows,activeId:id});
+    rowsRef.current=historyRef.current.present.rows;activeIdRef.current=id;
+    setRows(historyRef.current.present.rows);setActiveId(id);setActiveField(null);setHistoryRevision(value=>value+1);
+    setFeedback({kind:'editing'});setShowCorrection(false);setFullCorrectionUsed(false);setHintCount(0);setSelectionMode(false);setMistakes(0);
     attemptTimer.current.reset();completionRecorded.current=false;
   };
   const next=()=>{
@@ -200,9 +259,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
     if(mode==='review'){
       const choice=selectReviewExercise(pack,progress,{includeUnseen:false,recent,currentPrompt:exercise.promptLatex});
       if(!choice){onBack();return;}
-      setReviewTargetSkill(choice.targetSkill);
-      resetForChoice(choice);
-      return;
+      setReviewTargetSkill(choice.targetSkill);resetForChoice(choice);return;
     }
     resetForChoice(selectNextExercise(pack,category,progress,{recent,currentPrompt:exercise.promptLatex}));
   };
@@ -212,6 +269,8 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
   const shownHints=visibleHints(hintSequence,hintCount);
   const canRevealHint=hintCount<hintSequence.length;
   const canShowCorrection=['error','incomplete','continue'].includes(feedback.kind);
+  const undoEnabled=!success&&canUndoDerivation(historyRef.current);
+  const redoEnabled=!success&&canRedoDerivation(historyRef.current);
   const reviewHasNext=mode!=='review'||buildReviewPlan(pack,progressStore.load(),{includeUnseen:false,limit:1}).length>0;
   const headerTitle=mode==='review'
     ?`Révision · ${pack.skills?.[reviewTargetSkill]?.title||pack.categoryInfo[category].title}`
@@ -221,8 +280,12 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
     :(pack.ui?.nextLabel||'Exercice suivant');
 
   return <main class="practice-screen" data-pack={pack.id} data-training-mode={mode}>
-    <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{headerTitle}</div><div class="header-spacer"/></header>
-    <DerivationEditor promptKey={`${seed}:${exercise.promptLatex}`} promptLatex={exercise.promptLatex} rows={rows} workspace={workspace} invalidRow={invalid} incompleteRow={incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} onRelationChange={changeRelation} register={register}/>
+    <header class="practice-header">
+      <button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button>
+      <div class="practice-category">{headerTitle}</div>
+      <HistoryControls undoEnabled={undoEnabled} redoEnabled={redoEnabled} onUndo={undo} onRedo={redo}/>
+    </header>
+    <DerivationEditor promptKey={`${seed}:${exercise.promptLatex}`} promptLatex={exercise.promptLatex} rows={rows} workspace={workspace} invalidRow={invalid} incompleteRow={incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} onRelationChange={changeRelation} onUndo={undo} onRedo={redo} register={register}/>
     {!success&&<div class="practice-controls"><button type="button" class="verify-button" onClick={verify}>{pack.ui?.verifyLabel||'Vérifier'}</button></div>}
     <div class="feedback" aria-live="polite">
       {feedback.kind==='error'&&<div class="feedback-message feedback-message--error">{feedback.message}</div>}
@@ -235,7 +298,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category:initialCateg
     </div>
     {!success&&<HintPanel hints={shownHints}/>} 
     {showCorrection&&<Correction exercise={exercise} workspace={workspace} pack={pack}/>} 
-    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} keyboardConfig={keyboardConfig}/>} 
+    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeIdRef.current)} onDeleteEmpty={()=>deleteEmpty(activeIdRef.current)} onSetRelation={setActiveRelation} keyboardConfig={keyboardConfig}/>} 
   </main>;
 }
 
