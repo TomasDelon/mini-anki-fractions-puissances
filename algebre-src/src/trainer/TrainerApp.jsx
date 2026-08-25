@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createDerivationRow, cycleRelation, hydrateDerivationRows, serializeDerivationRows } from './core.js';
 import { resolveExerciseKeyboard, resolveExerciseWorkspace } from './pack.js';
 import { categoryMastery, createProgressStore } from './progress.js';
+import { recentExerciseEntry, selectNextExercise } from './scheduler.js';
 import { DerivationEditor, RelationMark } from './DerivationEditor.jsx';
 import { MathKeyboard } from './MathKeyboard.jsx';
 import { StaticMath, configureMathField } from './MathView.jsx';
@@ -24,7 +25,7 @@ function TrainerHome({pack,sessionStore,progressStore,onChoose,onResume}){
     <header class="home-header"><h1>{pack.title}</h1><p>{pack.ui?.homePrompt||'Choisis ce que tu veux pratiquer.'}</p></header>
     {saved&&<button class="resume-card" type="button" onClick={onResume}><span>{pack.ui?.resumeLabel||'Reprendre'}</span><strong>{pack.categoryInfo[saved.category].title}</strong></button>}
     <div class="category-list">
-      {pack.categories.map(category=><button key={category} type="button" class={`category-button ${category==='mixed'?'category-button--mixed':''}`} onClick={()=>onChoose(category)}>
+      {pack.categories.map(category=><button key={category} type="button" class={`category-button ${category===pack.training?.mixedCategory?'category-button--mixed':''}`} onClick={()=>onChoose(category)}>
         <span class="category-copy"><strong>{pack.categoryInfo[category].title}</strong><StaticMath latex={pack.categoryInfo[category].formula} className="category-formula"/><CategoryProgress pack={pack} progress={progress} category={category}/></span><span class="category-chevron" aria-hidden="true">›</span>
       </button>)}
     </div>
@@ -51,7 +52,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
   const [usedCorrection,setUsedCorrection]=useState(false);
   const [selectionMode,setSelectionMode]=useState(false);
   const [mistakes,setMistakes]=useState(0);
-  const [recent,setRecent]=useState([initialSeed>>>0]);
+  const [recent,setRecent]=useState(()=>[recentExerciseEntry(initialSeed,exercise)]);
   const nextId=useRef(Math.max(1,...rows.map(row=>row.id+1)));
   const fields=useRef(new Map());
   const startedAt=useRef(Date.now());
@@ -105,10 +106,10 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
     setShowCorrection(value=>!value);
   };
   const next=()=>{
-    let nextSeed=pack.nextSeed(),candidate=pack.generateExercise(category,nextSeed),guard=0;
-    while((recent.includes(nextSeed)||candidate.promptLatex===exercise.promptLatex)&&guard++<50){nextSeed=pack.nextSeed();candidate=pack.generateExercise(category,nextSeed);}
+    const choice=selectNextExercise(pack,category,progressStore.load(),{recent,currentPrompt:exercise.promptLatex});
+    const nextSeed=choice.seed,candidate=choice.exercise;
     const nextWorkspace=resolveExerciseWorkspace(pack,candidate),id=nextId.current++;
-    setRecent(old=>[...old.slice(-7),nextSeed]);setSeed(nextSeed);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setUsedCorrection(false);setSelectionMode(false);setMistakes(0);
+    setRecent(old=>[...old.slice(-6),recentExerciseEntry(nextSeed,candidate)]);setSeed(nextSeed);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setUsedCorrection(false);setSelectionMode(false);setMistakes(0);
     startedAt.current=Date.now();completionRecorded.current=false;
   };
   const invalid=feedback.kind==='error'?feedback.row:-1;
@@ -135,5 +136,9 @@ export function TrainerApp({pack,maxRows=20}){
   const progressStore=useMemo(()=>createProgressStore(pack),[pack]);
   const [screen,setScreen]=useState({kind:'home'});
   if(screen.kind==='practice')return <Practice pack={pack} sessionStore={sessionStore} progressStore={progressStore} maxRows={maxRows} category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
-  return <TrainerHome pack={pack} sessionStore={sessionStore} progressStore={progressStore} onChoose={category=>{sessionStore.clear();setScreen({kind:'practice',category,seed:pack.nextSeed(),rows:['']});}} onResume={()=>{const session=sessionStore.load();if(session)setScreen({kind:'practice',...session});}}/>;
+  return <TrainerHome pack={pack} sessionStore={sessionStore} progressStore={progressStore} onChoose={category=>{
+    sessionStore.clear();
+    const choice=selectNextExercise(pack,category,progressStore.load());
+    setScreen({kind:'practice',category,seed:choice.seed,rows:['']});
+  }} onResume={()=>{const session=sessionStore.load();if(session)setScreen({kind:'practice',...session});}}/>;
 }
