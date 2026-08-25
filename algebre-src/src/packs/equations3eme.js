@@ -53,6 +53,13 @@ export const EQUATIONS_3EME_PACK = defineTrainerPack({
   }),
   skills:SKILLS,
   categorySkills:CATEGORY_SKILLS,
+  training:Object.freeze({
+    adaptiveMixed:true,
+    mixedCategory:'mixed',
+    sampleSize:14,
+    recentCategoryPenalty:0.16,
+    exploration:0.12
+  }),
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
