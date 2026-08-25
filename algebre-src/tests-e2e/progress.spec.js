@@ -41,6 +41,34 @@ test('a completed exercise updates persistent skill progress and the home screen
   await expect(page.getByRole('button',{name:/Reprendre/})).toHaveCount(0);
 });
 
+test('an overdue learned skill opens a focused review session and persists its target',async({page})=>{
+  await page.addInitScript(key=>{
+    localStorage.setItem(key,JSON.stringify({
+      version:1,
+      completed:4,
+      skills:{'equation-isolation':{attempts:4,mastery:.9,streak:4,mistakes:0,totalDurationMs:40000,lastSeen:'2026-06-01T12:00:00.000Z'}},
+      categories:{simple:{completed:4,mistakes:0,totalDurationMs:40000,lastSeen:'2026-06-01T12:00:00.000Z'}},
+      recentExercises:[]
+    }));
+  },PROGRESS_KEY);
+  await page.setViewportSize({width:320,height:760});
+  await page.goto('./');
+
+  const review=page.getByRole('button',{name:/Révision : 1 compétence à revoir/});
+  await expect(review).toBeVisible();
+  await expect(review).toContainText(/Isoler l’inconnue/);
+  await review.click();
+
+  await expect(page.locator('.practice-screen')).toHaveAttribute('data-training-mode','review');
+  await expect(page.locator('.practice-category')).toContainText(/Révision · Isoler l’inconnue/);
+  await expect.poll(async()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key))?.mode,SESSION_KEY)).toBe('review');
+  const stored=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),SESSION_KEY);
+  expect(stored.targetSkill).toBe('equation-isolation');
+
+  const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth}));
+  expect(dims.scroll).toBeLessThanOrEqual(dims.inner);
+});
+
 test('progressive hints reveal strategy before mathematics and count as assistance',async({page})=>{
   await page.goto('./');
   await page.getByRole('button',{name:/Équations simples/}).click();
