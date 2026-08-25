@@ -1,5 +1,6 @@
-:root{--relation-gutter:34px}
-.prompt-row,.math-row,.correction-row{grid-template-columns:var(--relation-gutter) minmax(0,1fr) 30px}
+:root{--relation-gutter:34px;--correction-relation-gutter:30px}
+.prompt-row,.math-row{grid-template-columns:var(--relation-gutter) minmax(0,1fr) 30px}
+.correction-row{grid-template-columns:var(--correction-relation-gutter) minmax(0,1fr) 0}
 .relation-mark{display:flex;align-items:center;justify-content:center;min-width:0;min-height:44px;line-height:1}
 .relation-mark--editable{width:100%;border:0;background:transparent;border-radius:10px;padding:0;color:#56565e;cursor:pointer;touch-action:manipulation}
 .relation-mark--editable:active{background:#f0eff8}
@@ -7,4 +8,4 @@
 .workspace--aligned .prompt-row{margin-bottom:2px}
 .workspace--aligned .student-rows{gap:0}
 @media(min-width:900px){:root{--relation-gutter:42px}.relation-mark{font-size:23px}}
-@media(max-width:350px){:root{--relation-gutter:28px}.prompt-row,.math-row,.correction-row{grid-template-columns:var(--relation-gutter) minmax(0,1fr) 26px}}
+@media(max-width:350px){:root{--relation-gutter:28px}.prompt-row,.math-row{grid-template-columns:var(--relation-gutter) minmax(0,1fr) 26px}}
