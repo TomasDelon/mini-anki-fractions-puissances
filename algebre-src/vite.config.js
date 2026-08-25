@@ -6,6 +6,23 @@ import { getPackBuildConfig, packBasePath, validatePackBuildCatalog } from './sr
 
 const repository='mini-anki-fractions-puissances';
 
+function escapeHtml(value){
+  return String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function packHtmlMetadata(pack){
+  return {
+    name:'trainer-pack-html-metadata',
+    transformIndexHtml(html){
+      return html
+        .replaceAll('__TRAINER_NAME__',escapeHtml(pack.name))
+        .replaceAll('__TRAINER_DESCRIPTION__',escapeHtml(pack.description))
+        .replaceAll('__TRAINER_THEME__',escapeHtml(pack.themeColor))
+        .replaceAll('__TRAINER_LANG__',escapeHtml(pack.lang));
+    }
+  };
+}
+
 export default defineConfig(()=>{
   validatePackBuildCatalog();
   const packId=process.env.TRAINER_PACK||'equations-3eme';
@@ -24,6 +41,7 @@ export default defineConfig(()=>{
       __TRAINER_ALLOW_PACK_SWITCH__:JSON.stringify(allowPackSwitch)
     },
     plugins:[
+      packHtmlMetadata(pack),
       preact(),
       VitePWA({
         registerType:'autoUpdate',
