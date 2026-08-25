@@ -30,12 +30,16 @@ export default defineConfig(()=>{
   const base=packBasePath(pack,repository);
   const activePack=fileURLToPath(new URL(pack.module,import.meta.url));
   const allowPackSwitch=process.env.TRAINER_ALLOW_PACK_SWITCH==='1';
+  const resolverModule=fileURLToPath(new URL(allowPackSwitch?'./src/trainer/packResolver.switchable.js':'./src/trainer/packResolver.production.js',import.meta.url));
   const outDir=process.env.TRAINER_OUT_DIR||'dist';
 
   return {
     base,
     resolve:{
-      alias:{'@active-trainer-pack':activePack}
+      alias:{
+        '@active-trainer-pack':activePack,
+        '@trainer-pack-resolver':resolverModule
+      }
     },
     define:{
       __TRAINER_ALLOW_PACK_SWITCH__:JSON.stringify(allowPackSwitch)
