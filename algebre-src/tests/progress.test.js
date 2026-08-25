@@ -6,8 +6,12 @@ import {
   categoryMastery,
   createEmptyProgress,
   createProgressStore,
+  dueSkills,
   progressStorageKey,
   recordCompletion,
+  skillReviewIntervalMs,
+  skillReviewState,
+  skillReviewUrgency,
   weakestSkills
 } from '../src/trainer/progress.js';
 
@@ -66,6 +70,35 @@ describe('generic skill progress',()=>{
     expect(second.skills['equation-isolation'].mastery).toBeLessThan(first.skills['equation-isolation'].mastery);
     expect(second.skills['equation-isolation'].mastery).toBeGreaterThan(0);
     expect(second.skills['equation-isolation'].mistakes).toBe(3);
+  });
+
+  test('review intervals expand with successful streaks and mastery',()=>{
+    const basic={attempts:4,mastery:.5,streak:1,mistakes:0,totalDurationMs:1000,lastSeen:'2026-08-25T12:00:00.000Z'};
+    const strong={...basic,mastery:.95,streak:5};
+    expect(skillReviewIntervalMs(strong)).toBeGreaterThan(skillReviewIntervalMs(basic));
+  });
+
+  test('review urgency rises as a mastered skill becomes overdue',()=>{
+    const fresh={attempts:10,mastery:.95,streak:4,mistakes:0,totalDurationMs:10000,lastSeen:'2026-08-25T11:00:00.000Z'};
+    const overdue={...fresh,lastSeen:'2026-06-01T12:00:00.000Z'};
+    const now=new Date('2026-08-25T12:00:00Z');
+    expect(skillReviewUrgency(overdue,now)).toBeGreaterThan(skillReviewUrgency(fresh,now));
+    expect(skillReviewUrgency({attempts:0},now)).toBeGreaterThan(1);
+  });
+
+  test('skill review state exposes next review time and due skills include unseen knowledge',()=>{
+    const exercise=EQUATIONS_3EME_PACK.generateExercise('simple',71);
+    const completedAt=new Date('2026-08-25T12:00:00Z');
+    const progress=recordCompletion(EQUATIONS_3EME_PACK,createEmptyProgress(EQUATIONS_3EME_PACK),exercise,{},completedAt);
+    const state=skillReviewState(EQUATIONS_3EME_PACK,progress,'equation-isolation',completedAt);
+    expect(state.attempts).toBe(1);
+    expect(state.nextReviewAt).toBeTruthy();
+    expect(state.due).toBe(false);
+
+    const later=new Date(Date.parse(state.nextReviewAt)+1);
+    expect(skillReviewState(EQUATIONS_3EME_PACK,progress,'equation-isolation',later).due).toBe(true);
+    const due=dueSkills(EQUATIONS_3EME_PACK,progress,completedAt);
+    expect(due.some(item=>item.skillId==='square-root'&&item.attempts===0)).toBe(true);
   });
 
   test('progress stores are independent per pack and survive malformed data',()=>{
