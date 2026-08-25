@@ -12,6 +12,7 @@ import {
   hydrateDerivationRows,
   serializeDerivationRows
 } from './trainer/core.js';
+import { resolveExerciseKeyboard, resolveExerciseWorkspace } from './trainer/pack.js';
 import { DerivationEditor, RelationMark } from './trainer/DerivationEditor.jsx';
 import { MathKeyboard } from './trainer/MathKeyboard.jsx';
 import { StaticMath, configureMathField } from './trainer/MathView.jsx';
@@ -23,7 +24,6 @@ MathfieldElement.keypressVibration = false;
 const PACK=resolveTrainerPack(location.search);
 const CATEGORIES=PACK.categories;
 const CATEGORY_INFO=PACK.categoryInfo;
-const WORKSPACE=PACK.workspace;
 const MAX_ROWS=20;
 const SESSION_STORE=createSessionStore(PACK,{
   maxRows:MAX_ROWS,
@@ -51,8 +51,10 @@ function Correction({exercise,workspace}){
 }
 
 function Practice({category,seed:initialSeed,initialRows,onBack}){
-  const workspace=WORKSPACE;
   const [seed,setSeed]=useState(initialSeed>>>0);
+  const exercise=useMemo(()=>PACK.generateExercise(category,seed),[category,seed]);
+  const workspace=resolveExerciseWorkspace(PACK,exercise);
+  const keyboardConfig=resolveExerciseKeyboard(PACK,exercise);
   const [rows,setRows]=useState(()=>hydrateDerivationRows(initialRows,workspace));
   const [activeId,setActiveId]=useState(rows[0]?.id??0);
   const [activeField,setActiveField]=useState(null);
@@ -62,7 +64,6 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const [recent,setRecent]=useState([initialSeed>>>0]);
   const nextId=useRef(Math.max(1,...rows.map(r=>r.id+1)));
   const fields=useRef(new Map());
-  const exercise=useMemo(()=>PACK.generateExercise(category,seed),[category,seed]);
 
   useEffect(()=>SESSION_STORE.save({category,seed,rows:serializeDerivationRows(rows)}),[category,seed,rows]);
   useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf){setActiveField(mf);if(!mf.hasFocus())mf.focus();}});},[seed]);
@@ -99,10 +100,10 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   };
   const verify=()=>setFeedback(PACK.validateExercise(exercise,rows));
   const next=()=>{
-    let s=PACK.nextSeed(),guard=0;
-    while((recent.includes(s)||PACK.generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=PACK.nextSeed();
-    const id=nextId.current++;
-    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([createDerivationRow(id,'',workspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
+    let s=PACK.nextSeed(),candidate=PACK.generateExercise(category,s),guard=0;
+    while((recent.includes(s)||candidate.promptLatex===exercise.promptLatex)&&guard++<50){s=PACK.nextSeed();candidate=PACK.generateExercise(category,s);}
+    const nextWorkspace=resolveExerciseWorkspace(PACK,candidate),id=nextId.current++;
+    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
   };
   const invalid=feedback.kind==='error'?feedback.row:-1, incomplete=feedback.kind==='incomplete'?feedback.row:-1;
   const success=feedback.kind==='success';
@@ -132,14 +133,14 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
       {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={()=>setShowCorrection(v=>!v)}>{showCorrection?'Masquer la correction':'Voir une correction'}</button>}
     </div>
     {showCorrection&&<Correction exercise={exercise} workspace={workspace}/>} 
-    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} keyboardConfig={PACK.keyboard}/>} 
+    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} keyboardConfig={keyboardConfig}/>} 
   </main>;
 }
 
 function App(){
   const [screen,setScreen]=useState({kind:'home'});
   if(screen.kind==='practice') return <Practice category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
-  return <Home onChoose={category=>{SESSION_STORE.clear();setScreen({kind:'practice',category,seed:PACK.nextSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=SESSION_STORE.load();if(s)setScreen({kind:'practice',...s});}}/>;
+  return <Home onChoose={category=>{SESSION_STORE.clear();setScreen({kind:'practice',category,seed:PACK.nextSeed(),rows:['']});}} onResume={()=>{const s=SESSION_STORE.load();if(s)setScreen({kind:'practice',...s});}}/>;
 }
 
 render(<App/>,document.getElementById('app'));
