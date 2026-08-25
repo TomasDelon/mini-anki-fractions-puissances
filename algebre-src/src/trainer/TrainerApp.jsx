@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { createAttemptTimer } from './attemptTimer.js';
 import { createDerivationRow, cycleRelation, hydrateDerivationRows, serializeDerivationRows } from './core.js';
 import { completionHintCost, createHintSequence, revealHintCount, visibleHints } from './hints.js';
 import { resolveExerciseKeyboard, resolveExerciseWorkspace } from './pack.js';
@@ -69,15 +70,53 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
   const [recent,setRecent]=useState(()=>[recentExerciseEntry(initialSeed,exercise)]);
   const nextId=useRef(Math.max(1,...rows.map(row=>row.id+1)));
   const fields=useRef(new Map());
-  const startedAt=useRef(Number.isFinite(resumedAttempt.startedAt)&&resumedAttempt.startedAt>0?resumedAttempt.startedAt:Date.now());
+  const attemptTimer=useRef(null);
   const completionRecorded=useRef(false);
+  const sessionSnapshot=useRef(null);
+  if(!attemptTimer.current)attemptTimer.current=createAttemptTimer({elapsedMs:resumedAttempt.elapsedMs||0});
+  sessionSnapshot.current={category,seed,rows,mistakes,hintCount,fullCorrectionUsed};
 
-  useEffect(()=>sessionStore.save({
-    category,
-    seed,
-    rows:serializeDerivationRows(rows),
-    attempt:{mistakes,hintCount,fullCorrectionUsed,startedAt:startedAt.current}
-  }),[sessionStore,category,seed,rows,mistakes,hintCount,fullCorrectionUsed]);
+  const persistSession=()=>{
+    if(completionRecorded.current)return false;
+    const snapshot=sessionSnapshot.current;
+    return sessionStore.save({
+      category:snapshot.category,
+      seed:snapshot.seed,
+      rows:serializeDerivationRows(snapshot.rows),
+      attempt:{
+        mistakes:snapshot.mistakes,
+        hintCount:snapshot.hintCount,
+        fullCorrectionUsed:snapshot.fullCorrectionUsed,
+        elapsedMs:attemptTimer.current.elapsed()
+      }
+    });
+  };
+
+  useEffect(()=>{persistSession();},[sessionStore,category,seed,rows,mistakes,hintCount,fullCorrectionUsed]);
+  useEffect(()=>{
+    const visibility=()=>{
+      if(document.visibilityState==='hidden'){
+        attemptTimer.current.pause();
+        persistSession();
+      }else if(!completionRecorded.current){
+        attemptTimer.current.resume();
+      }
+    };
+    const pageHide=()=>{
+      attemptTimer.current.pause();
+      persistSession();
+    };
+    document.addEventListener('visibilitychange',visibility);
+    window.addEventListener('pagehide',pageHide);
+    return()=>{
+      document.removeEventListener('visibilitychange',visibility);
+      window.removeEventListener('pagehide',pageHide);
+      if(!completionRecorded.current){
+        attemptTimer.current.pause();
+        persistSession();
+      }
+    };
+  },[sessionStore]);
   useEffect(()=>{requestAnimationFrame(()=>{const field=fields.current.get(activeId);if(field){setActiveField(field);if(!field.hasFocus())field.focus();}});},[seed,activeId]);
 
   const register=(id,field)=>{
@@ -119,7 +158,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
       progressStore.complete(exercise,{
         mistakes,
         hints:completionHintCost({revealed:hintCount,fullCorrection:fullCorrectionUsed}),
-        durationMs:Date.now()-startedAt.current
+        durationMs:attemptTimer.current.pause()
       });
       sessionStore.clear();
     }
@@ -135,7 +174,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
     const nextSeed=choice.seed,candidate=choice.exercise;
     const nextWorkspace=resolveExerciseWorkspace(pack,candidate),id=nextId.current++;
     setRecent(old=>[...old.slice(-6),recentExerciseEntry(nextSeed,candidate)]);setSeed(nextSeed);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setFullCorrectionUsed(false);setHintCount(0);setSelectionMode(false);setMistakes(0);
-    startedAt.current=Date.now();completionRecorded.current=false;
+    attemptTimer.current.reset();completionRecorded.current=false;
   };
   const invalid=feedback.kind==='error'?feedback.row:-1;
   const incomplete=feedback.kind==='incomplete'?feedback.row:-1;
