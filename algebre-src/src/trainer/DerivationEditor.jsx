@@ -12,7 +12,7 @@ export function RelationMark({relation,workspace,hidden=false,onChange}){
   return <span class="equiv relation-mark" aria-label={info.aria}>{info.symbol}</span>;
 }
 
-function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,register}){
+function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,onUndo,onRedo,register}){
   const ref=useRef(null);
   useEffect(()=>{
     const mf=ref.current; if(!mf)return;
@@ -22,6 +22,16 @@ function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onD
   },[row.id]);
   useEffect(()=>{const mf=ref.current;if(mf&&mf.value!==row.value)mf.value=row.value;},[row.value]);
   const keydown=e=>{
+    const primary=(e.ctrlKey||e.metaKey)&&!e.altKey;
+    const key=e.key.toLowerCase();
+    if(primary&&key==='z'){
+      e.preventDefault();e.stopPropagation();
+      if(e.shiftKey)onRedo?.();else onUndo?.();
+      return;
+    }
+    if(primary&&key==='y'){
+      e.preventDefault();e.stopPropagation();onRedo?.();return;
+    }
     if(e.key==='Enter'){e.preventDefault();e.stopPropagation();onEnter(row.id);return;}
     if(e.key==='Backspace'&&e.currentTarget.value.trim()===''&&onDeleteEmpty(row.id)){e.preventDefault();e.stopPropagation();}
   };
@@ -53,6 +63,8 @@ export function DerivationEditor({
   onEnter,
   onDeleteEmpty,
   onRelationChange,
+  onUndo,
+  onRedo,
   register
 }){
   return <section class={`workspace workspace--${workspace.layout}`} aria-label="Résolution">
@@ -71,6 +83,8 @@ export function DerivationEditor({
         onEnter={onEnter}
         onDeleteEmpty={onDeleteEmpty}
         onRelationChange={onRelationChange}
+        onUndo={onUndo}
+        onRedo={onRedo}
         register={register}
       />)}
     </div>
