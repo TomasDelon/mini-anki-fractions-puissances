@@ -1,6 +1,6 @@
 import { CATEGORIES, CATEGORY_INFO, generateExercise, randomSeed } from '../exercises.js';
-import { validateChain } from '../math.js';
-import { createWorkspace, validateDerivation } from '../trainer/core.js';
+import { createWorkspace } from '../trainer/core.js';
+import { validateEquationDerivation } from '../trainer/equationRelations.js';
 import { defineTrainerPack } from '../trainer/pack.js';
 
 const WORKSPACE=createWorkspace({
@@ -27,7 +27,7 @@ export const EQUATIONS_3EME_PACK = defineTrainerPack({
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
-    return validateDerivation(exercise.promptLatex,rows,WORKSPACE,{iffChain:validateChain});
+    return validateEquationDerivation(exercise,rows,exercise.workspace||WORKSPACE);
   },
   pedagogy:Object.freeze({
     domainAnalysis:false,
