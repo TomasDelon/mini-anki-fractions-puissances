@@ -4,15 +4,13 @@ import { MathfieldElement } from 'mathlive';
 import 'mathlive/fonts.css';
 import './styles.css';
 import './trainer/trainer.css';
-import { analyze, setEqual, validateChain } from './math.js';
-import { CATEGORIES, CATEGORY_INFO, generateExercise, randomSeed } from './exercises.js';
+import { analyze, setEqual } from './math.js';
 import { EQUATIONS_3EME_PACK } from './packs/equations3eme.js';
 import {
   createDerivationRow,
   cycleRelation,
   hydrateDerivationRows,
-  serializeDerivationRows,
-  validateDerivation
+  serializeDerivationRows
 } from './trainer/core.js';
 import { getKeyDefinition, getKeyboardProfile } from './trainer/keyboardProfiles.js';
 import { DerivationEditor, RelationMark } from './trainer/DerivationEditor.jsx';
@@ -21,13 +19,16 @@ import { StaticMath, configureMathField } from './trainer/MathView.jsx';
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
 
-const STORAGE_KEY='algebre-3eme-session-v3';
-const LEGACY_STORAGE_KEY='algebre-3eme-session-v2';
+const PACK=EQUATIONS_3EME_PACK;
+const CATEGORIES=PACK.categories;
+const CATEGORY_INFO=PACK.categoryInfo;
+const WORKSPACE=PACK.workspace;
+const STORAGE_KEY=`math-trainer-${PACK.id}-session-v${PACK.version}`;
+const LEGACY_STORAGE_KEYS=['algebre-3eme-session-v3','algebre-3eme-session-v2'];
 const MAX_ROWS=20;
-const WORKSPACE=EQUATIONS_3EME_PACK.workspace;
 
 function loadSession(){
-  for(const key of [STORAGE_KEY,LEGACY_STORAGE_KEY]){
+  for(const key of [STORAGE_KEY,...LEGACY_STORAGE_KEYS]){
     try{
       const x=JSON.parse(localStorage.getItem(key));
       if(!x||!CATEGORIES.includes(x.category)||!Number.isFinite(x.seed)||!Array.isArray(x.rows)||!x.rows.length) continue;
@@ -39,14 +40,15 @@ function loadSession(){
 }
 function saveSession(s){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch{} }
 function clearSession(){
-  try{localStorage.removeItem(STORAGE_KEY);}catch{}
-  try{localStorage.removeItem(LEGACY_STORAGE_KEY);}catch{}
+  for(const key of [STORAGE_KEY,...LEGACY_STORAGE_KEYS]){
+    try{localStorage.removeItem(key);}catch{}
+  }
 }
 
 function Home({onChoose,onResume}){
   const saved=loadSession();
   return <main class="home-screen">
-    <header class="home-header"><h1>Algèbre</h1><p>Choisis ce que tu veux pratiquer.</p></header>
+    <header class="home-header"><h1>{PACK.title}</h1><p>Choisis ce que tu veux pratiquer.</p></header>
     {saved&&<button class="resume-card" type="button" onClick={onResume}><span>Reprendre</span><strong>{CATEGORY_INFO[saved.category].title}</strong></button>}
     <div class="category-list">
       {CATEGORIES.map(cat=><button key={cat} type="button" class={`category-button ${cat==='mixed'?'category-button--mixed':''}`} onClick={()=>onChoose(cat)}>
@@ -60,7 +62,7 @@ function Key({dataKey,label,math=true,className='',onClick,ariaLabel}){
   return <button type="button" data-key={dataKey} aria-label={ariaLabel} class={`key ${math?'key--math':''} ${className}`} onPointerDown={e=>e.preventDefault()} onClick={onClick}>{math?<StaticMath latex={label}/>:label}</button>;
 }
 
-function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpty,onSetRelation,profileId=EQUATIONS_3EME_PACK.keyboard.profile}){
+function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpty,onSetRelation,profileId=PACK.keyboard.profile}){
   const profile=getKeyboardProfile(profileId);
   const insert=(latex,opts={})=>{
     if(!field)return;
@@ -136,7 +138,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const [recent,setRecent]=useState([initialSeed>>>0]);
   const nextId=useRef(Math.max(1,...rows.map(r=>r.id+1)));
   const fields=useRef(new Map());
-  const exercise=useMemo(()=>generateExercise(category,seed),[category,seed]);
+  const exercise=useMemo(()=>PACK.generateExercise(category,seed),[category,seed]);
 
   useEffect(()=>saveSession({category,seed,rows:serializeDerivationRows(rows)}),[category,seed,rows]);
   useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf){setActiveField(mf);if(!mf.hasFocus())mf.focus();}});},[seed]);
@@ -171,10 +173,10 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
     setRows(old=>old.filter(r=>r.id!==id));setActiveId(target.id);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
     requestAnimationFrame(()=>{const mf=fields.current.get(target.id);if(mf){setActiveField(mf);mf.focus();mf.executeCommand('moveToMathfieldEnd');}});return true;
   };
-  const verify=()=>setFeedback(validateDerivation(exercise.promptLatex,rows,workspace,{iffChain:validateChain}));
+  const verify=()=>setFeedback(PACK.validateExercise(exercise,rows));
   const next=()=>{
-    let s=randomSeed(),guard=0;
-    while((recent.includes(s)||generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=randomSeed();
+    let s=PACK.nextSeed(),guard=0;
+    while((recent.includes(s)||PACK.generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=PACK.nextSeed();
     const id=nextId.current++;
     setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([createDerivationRow(id,'',workspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
   };
@@ -206,18 +208,18 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
       {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={()=>setShowCorrection(v=>!v)}>{showCorrection?'Masquer la correction':'Voir une correction'}</button>}
     </div>
     {showCorrection&&<Correction exercise={exercise} workspace={workspace}/>} 
-    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation}/>} 
+    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} profileId={PACK.keyboard.profile}/>} 
   </main>;
 }
 
 function App(){
   const [screen,setScreen]=useState({kind:'home'});
   if(screen.kind==='practice') return <Practice category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
-  return <Home onChoose={category=>{clearSession();setScreen({kind:'practice',category,seed:randomSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=loadSession();if(s)setScreen({kind:'practice',...s});}}/>;
+  return <Home onChoose={category=>{clearSession();setScreen({kind:'practice',category,seed:PACK.nextSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=loadSession();if(s)setScreen({kind:'practice',...s});}}/>;
 }
 
 render(<App/>,document.getElementById('app'));
 
 if(import.meta.env.DEV || location.hostname==='127.0.0.1' || location.hostname==='localhost'){
-  window.__ALGEBRE_TEST__={analyze,setEqual,generateExercise};
+  window.__ALGEBRE_TEST__={analyze,setEqual,generateExercise:PACK.generateExercise,pack:PACK};
 }
