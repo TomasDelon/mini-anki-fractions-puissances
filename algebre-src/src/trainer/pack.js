@@ -19,8 +19,10 @@ function normalizeSkills(skills={}){
   for(const [id,skill] of Object.entries(skills)){
     if(!/^[a-z0-9-]+$/.test(id)) throw new Error(`Invalid skill id: ${id}`);
     if(!skill?.title||typeof skill.title!=='string') throw new Error(`Skill ${id} needs a title`);
+    if(skill.hint!==undefined&&(typeof skill.hint!=='string'||!skill.hint.trim())) throw new Error(`Skill ${id} hint must be a non-empty string`);
     normalized[id]=Object.freeze({
       ...skill,
+      hint:typeof skill.hint==='string'?skill.hint.trim():undefined,
       prerequisites:Object.freeze([...(skill.prerequisites||[])])
     });
   }
@@ -46,11 +48,14 @@ function normalizeTrainingConfig(categories,training={}){
   const mixedCategory=training.mixedCategory??null;
   if(mixedCategory!==null&&!categories.includes(mixedCategory)) throw new Error(`Unknown mixed training category: ${mixedCategory}`);
   const sampleSize=training.sampleSize??12;
+  const historySize=training.historySize??8;
   if(!Number.isInteger(sampleSize)||sampleSize<1||sampleSize>64) throw new Error('training.sampleSize must be an integer between 1 and 64');
+  if(!Number.isInteger(historySize)||historySize<0||historySize>24) throw new Error('training.historySize must be an integer between 0 and 24');
   return Object.freeze({
     adaptiveMixed:Boolean(training.adaptiveMixed&&mixedCategory),
     mixedCategory,
     sampleSize,
+    historySize,
     recentCategoryPenalty:Number.isFinite(training.recentCategoryPenalty)?Math.max(0,training.recentCategoryPenalty):0.16,
     exploration:Number.isFinite(training.exploration)?Math.max(0,Math.min(0.5,training.exploration)):0.12
   });
