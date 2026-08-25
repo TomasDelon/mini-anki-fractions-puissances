@@ -10,6 +10,30 @@ const WORKSPACE=createWorkspace({
   defaultRelation:'iff'
 });
 
+const SKILLS=Object.freeze({
+  'equation-isolation':{title:'Isoler l’inconnue'},
+  'unknown-both-sides':{title:'Inconnue des deux côtés',prerequisites:['equation-isolation']},
+  distributivity:{title:'Développer une expression'},
+  'constant-fractions':{title:'Équations avec fractions constantes',prerequisites:['equation-isolation']},
+  'square-root':{title:'Carré et racine carrée'},
+  'common-factor':{title:'Mettre en facteur'},
+  'zero-product':{title:'Produit nul'},
+  'remarkable-identities':{title:'Identités remarquables'}
+});
+
+const CATEGORY_SKILLS=Object.freeze({
+  simple:['equation-isolation'],
+  linear:['equation-isolation'],
+  'both-sides':['unknown-both-sides','equation-isolation'],
+  parentheses:['distributivity','equation-isolation'],
+  fractions:['constant-fractions','equation-isolation'],
+  squares:['square-root'],
+  'pure-quadratic':['square-root','equation-isolation'],
+  'common-factor':['common-factor','zero-product'],
+  identities:['remarkable-identities','zero-product'],
+  mixed:Object.keys(SKILLS)
+});
+
 export const EQUATIONS_3EME_PACK = defineTrainerPack({
   id:'equations-3eme',
   version:2,
@@ -27,6 +51,8 @@ export const EQUATIONS_3EME_PACK = defineTrainerPack({
   session:Object.freeze({
     legacyKeys:Object.freeze(['algebre-3eme-session-v3','algebre-3eme-session-v2'])
   }),
+  skills:SKILLS,
+  categorySkills:CATEGORY_SKILLS,
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
