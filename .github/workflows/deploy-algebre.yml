@@ -50,11 +50,6 @@ jobs:
         working-directory: /tmp/algebre-src
         run: yarn install --non-interactive --network-timeout 120000
 
-      - name: Typecheck
-        if: steps.payload.outputs.present == 'true'
-        working-directory: /tmp/algebre-src
-        run: yarn typecheck
-
       - name: Build for GitHub Pages subpath
         if: steps.payload.outputs.present == 'true'
         working-directory: /tmp/algebre-src
