@@ -22,6 +22,18 @@ export const PACK_BUILD_CATALOG=Object.freeze({
     orientation:'portrait-primary',
     themeColor:'#ffffff',
     backgroundColor:'#ffffff'
+  }),
+  fractions:Object.freeze({
+    id:'fractions',
+    module:'./src/packs/fractions.js',
+    slug:'fractions',
+    name:'Fractions',
+    shortName:'Fractions',
+    description:'Entraînement exact sur les fractions, hors ligne, avec calculs alignés, simplification et révision adaptative.',
+    lang:'fr',
+    orientation:'portrait-primary',
+    themeColor:'#ffffff',
+    backgroundColor:'#ffffff'
   })
 });
 
