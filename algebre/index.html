@@ -14,12 +14,21 @@
     <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest">
     <script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script>
     <style>
+      /* MathLive labels are visual only: the surrounding button owns the click. */
       .keyboard .key-math-label,
       .keyboard .key math-field {
         pointer-events: none !important;
         user-select: none !important;
         -webkit-user-select: none !important;
       }
+
+      /* Keep one deterministic 6-column layout on desktop and iPhone. */
+      .keyboard .key-grid {
+        display: grid !important;
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+      }
+
       .keyboard .key {
         cursor: pointer;
         touch-action: manipulation;
@@ -27,6 +36,36 @@
         border-color: #dedfe5;
         box-shadow: 0 1px 1px rgba(20,22,28,.04), 0 2px 7px rgba(20,22,28,.04);
       }
+
+      /* Stable order. CSS order avoids fighting Preact by moving DOM nodes. */
+      .key-grid [data-key="7"] { order: 1; }
+      .key-grid [data-key="8"] { order: 2; }
+      .key-grid [data-key="9"] { order: 3; }
+      .key-grid [data-key="plus"] { order: 4; }
+      .key-grid [data-key="minus"] { order: 5; }
+      .key-grid [data-key="times"] { order: 6; }
+
+      .key-grid [data-key="4"] { order: 7; }
+      .key-grid [data-key="5"] { order: 8; }
+      .key-grid [data-key="6"] { order: 9; }
+      .key-grid [data-key="x"] { order: 10; }
+      .key-grid [data-key="square"] { order: 11; }
+      .key-grid [data-key="equals"] { order: 12; }
+
+      .key-grid [data-key="1"] { order: 13; }
+      .key-grid [data-key="2"] { order: 14; }
+      .key-grid [data-key="3"] { order: 15; }
+      .key-grid [data-key="pm"] { order: 16; }
+      .key-grid [data-key="parentheses"] { order: 17; }
+      .key-grid [data-key="sqrt"] { order: 18; }
+
+      .key-grid [data-key="0"] { order: 19; }
+      .key-grid [data-key="fraction"] { order: 20; }
+      .key-grid [data-key="abs"] { order: 21; }
+      .key-grid [data-key="or"] { order: 22; }
+      .key-grid [data-key="up"] { order: 23; }
+      .key-grid [data-key="down"] { order: 24; }
+
       .keyboard .key[data-key="x"],
       .keyboard .key[data-key="square"],
       .keyboard .key[data-key="parentheses"],
@@ -36,6 +75,7 @@
         background: #faf9ff;
         border-color: #e7e3ff;
       }
+
       .keyboard .key[data-key="times"],
       .keyboard .key[data-key="plus"],
       .keyboard .key[data-key="minus"],
@@ -43,11 +83,16 @@
       .keyboard .key[data-key="pm"] {
         background: #f8f8fb;
       }
+
       .keyboard .key[data-key="fraction"] .key-math-label { font-size: 18px; }
       .keyboard .key[data-key="sqrt"] .key-math-label { font-size: 20px; }
       .keyboard .key[data-key="square"] .key-math-label { font-size: 25px; }
       .keyboard .key[data-key="x"] .key-math-label { font-size: 25px; }
       .keyboard .key[data-key="or"] .key-math-label { font-size: 17px; }
+
+      @media (max-width: 350px) {
+        .keyboard .key-grid { gap: 4px !important; }
+      }
     </style>
   </head>
   <body>
@@ -66,38 +111,29 @@
           or: '\\text{ ou }'
         };
 
-        const order = [
-          '7','8','9','plus','minus','times',
-          '4','5','6','x','square','equals',
-          '1','2','3','pm','parentheses','sqrt',
-          '0','fraction','abs','or','up','down'
-        ];
-
-        function refineKeyboard() {
+        function applyLabels() {
           const grid = document.querySelector('.key-grid');
-          if (!grid) return;
-
-          for (const key of order) {
-            const button = grid.querySelector(`[data-key="${key}"]`);
-            if (button) grid.appendChild(button);
-          }
-
+          if (!grid) return false;
+          let found = 0;
           for (const [key, latex] of Object.entries(labels)) {
-            const button = grid.querySelector(`[data-key="${key}"]`);
-            const mf = button?.querySelector('math-field');
+            const mf = grid.querySelector(`[data-key="${key}"] math-field`);
             if (!mf) continue;
+            found++;
             if (mf.value !== latex) mf.value = latex;
             mf.readOnly = true;
             mf.tabIndex = -1;
           }
+          return found === Object.keys(labels).length;
         }
 
-        const observer = new MutationObserver(refineKeyboard);
-        observer.observe(document.getElementById('app'), { childList: true, subtree: true });
         customElements.whenDefined('math-field').then(() => {
-          refineKeyboard();
-          requestAnimationFrame(refineKeyboard);
-          setTimeout(refineKeyboard, 250);
+          let attempts = 0;
+          const timer = setInterval(() => {
+            attempts++;
+            if (applyLabels() || attempts >= 30) clearInterval(timer);
+          }, 100);
+          applyLabels();
+          requestAnimationFrame(applyLabels);
         });
       })();
     </script>
