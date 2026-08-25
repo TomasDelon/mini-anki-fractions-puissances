@@ -11,8 +11,75 @@
     <title>Algèbre</title>
     <script type="module" crossorigin src="/mini-anki-fractions-puissances/algebre/assets/index-DvQoueyj.js"></script>
     <link rel="stylesheet" crossorigin href="/mini-anki-fractions-puissances/algebre/assets/index-BrMGeqoB.css">
-  <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script></head>
+    <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest">
+    <script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script>
+  </head>
   <body>
     <div id="app"></div>
+    <script>
+      (() => {
+        if (window.__algebreEditorHotfix) return;
+        window.__algebreEditorHotfix = true;
+
+        let lastStudentMathField = null;
+
+        const studentMathFieldFromEvent = (event) => {
+          const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+          for (const node of path) {
+            if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'math-field' && node.closest('.math-row')) {
+              return node;
+            }
+          }
+          const target = event.target;
+          return target instanceof HTMLElement && target.tagName.toLowerCase() === 'math-field' && target.closest('.math-row')
+            ? target
+            : null;
+        };
+
+        document.addEventListener('focusin', (event) => {
+          const field = studentMathFieldFromEvent(event);
+          if (field) lastStudentMathField = field;
+        }, true);
+
+        // Hardware Backspace/Delete on desktop: an empty generated row should be
+        // removed exactly like tapping the app's own backspace key.
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== 'Backspace') return;
+          const field = studentMathFieldFromEvent(event);
+          if (!field || typeof field.value !== 'string' || field.value.trim() !== '') return;
+          if (document.querySelectorAll('.student-rows .math-row').length <= 1) return;
+
+          const backspace = document.querySelector('[data-key="backspace"]');
+          if (!(backspace instanceof HTMLButtonElement)) return;
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          backspace.click();
+        }, true);
+
+        // Keep "ou" as a complete text atom, then place the next editable
+        // placeholder back in math mode. Thus Ou + x becomes \text{ ou }x,
+        // never \text{ ou x}.
+        document.addEventListener('click', (event) => {
+          const target = event.target instanceof Element ? event.target.closest('[data-key="or"]') : null;
+          if (!target) return;
+
+          const active = document.activeElement;
+          const field = active instanceof HTMLElement && active.tagName.toLowerCase() === 'math-field' && active.closest('.math-row')
+            ? active
+            : lastStudentMathField;
+          if (!field || typeof field.insert !== 'function') return;
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          field.insert('\\text{ ou }#?', {
+            insertionMode: 'replaceSelection',
+            selectionMode: 'placeholder',
+            focus: true
+          });
+          field.focus();
+        }, true);
+      })();
+    </script>
   </body>
 </html>
