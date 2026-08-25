@@ -59,16 +59,19 @@ test('progressive hints reveal strategy before mathematics and count as assistan
   expect(progress.skills['equation-isolation'].mastery).toBeLessThan(.9);
 });
 
-test('hint usage survives reload and resume without resetting assistance',async({page})=>{
+test('hint usage and active time survive reload and resume without resetting assistance',async({page})=>{
   await page.goto('./');
   await page.getByRole('button',{name:/Équations simples/}).click();
   await page.getByRole('button',{name:'Indice',exact:true}).click();
+  await page.waitForTimeout(80);
   await page.getByRole('button',{name:'Indice suivant',exact:true}).click();
   await expect(page.locator('.hint-item')).toHaveCount(2);
 
+  await expect.poll(async()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key))?.attempt?.elapsedMs||0,SESSION_KEY)).toBeGreaterThan(20);
   const stored=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),SESSION_KEY);
   expect(stored.attempt.hintCount).toBe(2);
-  expect(stored.attempt.startedAt).toBeGreaterThan(0);
+  expect(stored.attempt.elapsedMs).toBeGreaterThan(20);
+  expect(stored.attempt.startedAt).toBeUndefined();
 
   await page.reload();
   await page.getByRole('button',{name:/Reprendre/}).click();
