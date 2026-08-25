@@ -1,4 +1,4 @@
-name: Test and deploy Algèbre PWA
+name: Test and deploy Math Trainer PWAs
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: deploy-algebre
+  group: deploy-math-trainer
   cancel-in-progress: true
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
         working-directory: algebre-src
         run: npm install --no-audit --no-fund
 
-      - name: Algebra and generator tests
+      - name: Algebra, pack and generator tests
         working-directory: algebre-src
         shell: bash
         run: |
@@ -51,7 +51,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: algebre-unit-test-log
+          name: math-trainer-unit-test-log
           path: algebre-src/unit-test.log
           if-no-files-found: ignore
 
@@ -72,30 +72,35 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: algebre-e2e-test-log
+          name: math-trainer-e2e-test-log
           path: algebre-src/e2e-test.log
           if-no-files-found: ignore
 
-      - name: Build production PWA
+      - name: Build all independent trainer PWAs
         if: success()
         working-directory: algebre-src
-        run: npm run build
+        run: npm run build:all
 
-      - name: Publish tested build
+      - name: Verify PWA manifests and deployment scopes
+        if: success()
+        working-directory: algebre-src
+        run: npm run verify:builds
+
+      - name: Publish tested trainer PWAs
         if: success()
         shell: bash
         run: |
           git pull --rebase origin main
-          rm -rf algebre
-          mkdir -p algebre
-          cp -R algebre-src/dist/. algebre/
+          cd algebre-src
+          mapfile -t PACK_SLUGS < <(node scripts/stage-built-packs.mjs dist-packs ..)
+          cd ..
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add algebre
+          git add -- "${PACK_SLUGS[@]}"
           if git diff --cached --quiet; then
             echo 'No deployment changes.'
           else
-            git commit -m 'Deploy tested Algèbre PWA [skip ci]'
+            git commit -m 'Deploy tested Math Trainer PWAs [skip ci]'
             git push
           fi
