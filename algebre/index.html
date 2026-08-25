@@ -14,24 +14,92 @@
     <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest">
     <script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script>
     <style>
-      /* The LaTeX labels inside keyboard buttons are presentation-only.
-         On desktop MathLive's <math-field> captures pointer events before the
-         parent button receives its click. Make the whole visible key surface
-         belong to the button instead. */
       .keyboard .key-math-label,
       .keyboard .key math-field {
         pointer-events: none !important;
         user-select: none !important;
         -webkit-user-select: none !important;
       }
-
       .keyboard .key {
         cursor: pointer;
         touch-action: manipulation;
+        background: #fff;
+        border-color: #dedfe5;
+        box-shadow: 0 1px 1px rgba(20,22,28,.04), 0 2px 7px rgba(20,22,28,.04);
       }
+      .keyboard .key[data-key="x"],
+      .keyboard .key[data-key="square"],
+      .keyboard .key[data-key="parentheses"],
+      .keyboard .key[data-key="fraction"],
+      .keyboard .key[data-key="sqrt"],
+      .keyboard .key[data-key="abs"] {
+        background: #faf9ff;
+        border-color: #e7e3ff;
+      }
+      .keyboard .key[data-key="times"],
+      .keyboard .key[data-key="plus"],
+      .keyboard .key[data-key="minus"],
+      .keyboard .key[data-key="equals"],
+      .keyboard .key[data-key="pm"] {
+        background: #f8f8fb;
+      }
+      .keyboard .key[data-key="fraction"] .key-math-label { font-size: 18px; }
+      .keyboard .key[data-key="sqrt"] .key-math-label { font-size: 20px; }
+      .keyboard .key[data-key="square"] .key-math-label { font-size: 25px; }
+      .keyboard .key[data-key="x"] .key-math-label { font-size: 25px; }
+      .keyboard .key[data-key="or"] .key-math-label { font-size: 17px; }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      (() => {
+        const labels = {
+          x: 'x',
+          times: '\\times',
+          pm: '\\pm',
+          square: '{}^{2}',
+          parentheses: '\\left(\\square\\right)',
+          fraction: '\\dfrac{\\square}{\\square}',
+          sqrt: '\\sqrt{\\square}',
+          abs: '\\left|\\square\\right|',
+          or: '\\text{ ou }'
+        };
+
+        const order = [
+          '7','8','9','plus','minus','times',
+          '4','5','6','x','square','equals',
+          '1','2','3','pm','parentheses','sqrt',
+          '0','fraction','abs','or','up','down'
+        ];
+
+        function refineKeyboard() {
+          const grid = document.querySelector('.key-grid');
+          if (!grid) return;
+
+          for (const key of order) {
+            const button = grid.querySelector(`[data-key="${key}"]`);
+            if (button) grid.appendChild(button);
+          }
+
+          for (const [key, latex] of Object.entries(labels)) {
+            const button = grid.querySelector(`[data-key="${key}"]`);
+            const mf = button?.querySelector('math-field');
+            if (!mf) continue;
+            if (mf.value !== latex) mf.value = latex;
+            mf.readOnly = true;
+            mf.tabIndex = -1;
+          }
+        }
+
+        const observer = new MutationObserver(refineKeyboard);
+        observer.observe(document.getElementById('app'), { childList: true, subtree: true });
+        customElements.whenDefined('math-field').then(() => {
+          refineKeyboard();
+          requestAnimationFrame(refineKeyboard);
+          setTimeout(refineKeyboard, 250);
+        });
+      })();
+    </script>
   </body>
 </html>
