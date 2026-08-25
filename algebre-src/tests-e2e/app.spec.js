@@ -23,6 +23,13 @@ test('keyboard is stable, complete and ordered',async({page})=>{
   await expect(page.getByRole('button',{name:'Racine carrée'})).toBeVisible();
 });
 
+test('current equations pack renders equivalence as a real relation gutter',async({page})=>{
+  await openSimple(page);
+  const relation=page.locator('.math-row .relation-mark').first();
+  await expect(relation).toHaveText('⇔');
+  await expect(relation).toHaveAttribute('aria-label','Équivalent à');
+});
+
 test('x then square produces a postfix square',async({page})=>{
   await openSimple(page);
   await page.getByRole('button',{name:'x',exact:true}).click();
