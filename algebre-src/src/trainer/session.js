@@ -5,6 +5,19 @@ export function sessionStorageKey(pack){
   return `math-trainer-${pack.id}-session-v${pack.version}`;
 }
 
+function normalizeAttempt(value){
+  if(!value||typeof value!=='object')return null;
+  const mistakes=Number.isFinite(value.mistakes)?Math.max(0,Math.floor(value.mistakes)):0;
+  const hintCount=Number.isFinite(value.hintCount)?Math.max(0,Math.floor(value.hintCount)):0;
+  const startedAt=Number.isFinite(value.startedAt)&&value.startedAt>0?Math.floor(value.startedAt):null;
+  return {
+    mistakes,
+    hintCount,
+    fullCorrectionUsed:Boolean(value.fullCorrectionUsed),
+    startedAt
+  };
+}
+
 export function createSessionStore(pack,options={}){
   const maxRows=options.maxRows??20;
   const legacyKeys=Object.freeze([...(options.legacyKeys||[])]);
@@ -24,14 +37,21 @@ export function createSessionStore(pack,options={}){
         const exercise=pack.generateExercise(value.category,seed);
         const workspace=resolveExerciseWorkspace(pack,exercise);
         const rows=serializeDerivationRows(hydrateDerivationRows(value.rows.slice(0,maxRows),workspace));
-        return {category:value.category,seed,rows};
+        const attempt=normalizeAttempt(value.attempt);
+        return attempt?{category:value.category,seed,rows,attempt}:{category:value.category,seed,rows};
       }catch{}
     }
     return null;
   }
 
   function save(session){
-    try{getStorage()?.setItem(key,JSON.stringify(session));return true;}catch{return false;}
+    try{
+      const attempt=normalizeAttempt(session?.attempt);
+      const value=attempt?{...session,attempt}:{...session};
+      if(!attempt)delete value.attempt;
+      getStorage()?.setItem(key,JSON.stringify(value));
+      return true;
+    }catch{return false;}
   }
 
   function clear(){
