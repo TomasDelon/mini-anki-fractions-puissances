@@ -7,5 +7,9 @@
 .workspace--aligned .relation-mark{font-weight:650;color:#45454d}
 .workspace--aligned .prompt-row{margin-bottom:2px}
 .workspace--aligned .student-rows{gap:0}
-@media(min-width:900px){:root{--relation-gutter:42px}.relation-mark{font-size:23px}}
+.keyboard--compact{padding-block:7px;position:sticky}
+.key-compact-row{display:flex;gap:7px;justify-content:center;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-inline:2px}
+.key-compact-row::-webkit-scrollbar{display:none}
+.key-compact-row .key{flex:0 0 54px;min-height:44px}
+@media(min-width:900px){:root{--relation-gutter:42px}.relation-mark{font-size:23px}.keyboard--compact{width:max-content;max-width:calc(100vw - 48px);min-width:0;margin:8px auto calc(10px + env(safe-area-inset-bottom));border:1px solid var(--border);border-radius:14px;padding:7px 8px;box-shadow:0 8px 28px rgba(20,22,28,.08)}.key-compact-row{justify-content:flex-start}.key-compact-row .key{flex-basis:50px}}
 @media(max-width:350px){:root{--relation-gutter:28px}.prompt-row,.math-row{grid-template-columns:var(--relation-gutter) minmax(0,1fr) 26px}}
