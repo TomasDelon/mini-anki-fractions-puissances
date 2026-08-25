@@ -33,7 +33,8 @@ export const KEY_LIBRARY = Object.freeze({
   enter:key('enter','Entrée',{type:'enter'},{math:false,className:'key--enter',ariaLabel:'Nouvelle ligne'}),
   relationEquals:key('relation-equals','=',{type:'set-relation',relation:'equals'},{ariaLabel:'Relation égal à'}),
   relationIff:key('relation-iff','\\Longleftrightarrow',{type:'set-relation',relation:'iff'},{ariaLabel:'Relation équivalente à'}),
-  relationImplies:key('relation-implies','\\Longrightarrow',{type:'set-relation',relation:'implies'},{ariaLabel:'Relation implique'})
+  relationImplies:key('relation-implies','\\Longrightarrow',{type:'set-relation',relation:'implies'},{ariaLabel:'Relation implique'}),
+  relationReverseImplies:key('relation-reverse-implies','\\Longleftarrow',{type:'set-relation',relation:'reverse-implies'},{ariaLabel:'Relation est impliqué par'})
 });
 
 export const KEYBOARD_PROFILES = Object.freeze({
@@ -57,9 +58,9 @@ export const KEYBOARD_PROFILES = Object.freeze({
   }),
   'derivation-relations':Object.freeze({
     id:'derivation-relations',
-    grid:Object.freeze(['relationEquals','relationIff','relationImplies']),
+    grid:Object.freeze(['relationEquals','relationIff','relationImplies','relationReverseImplies']),
     bottom:Object.freeze([]),
-    compact:Object.freeze(['relationEquals','relationIff','relationImplies'])
+    compact:Object.freeze(['relationEquals','relationIff','relationImplies','relationReverseImplies'])
   })
 });
 
