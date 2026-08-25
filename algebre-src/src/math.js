@@ -138,7 +138,7 @@ class Parser {
     }
     return e;
   }
-  startsPrimary(t) { return !!t && ['num','x','lp','lb','frac','sqrt','pm','bar'].includes(t.k); }
+  startsPrimary(t) { return !!t && ['num','x','lp','lb','frac','sqrt','pm'].includes(t.k); }
   mul() {
     let e = this.unary();
     for (;;) {
@@ -257,7 +257,7 @@ function toPoly(e) {
     return degree(p)<=2?p:null;
   }
   if (e.k === 'div') {
-    if (containsX(e.b)) return null; // domaine volontairement hors programme: on refuse simplement.
+    if (containsX(e.b)) return null;
     const d=constValue(e.b); if(!d || d.isZero()) return null;
     const p=toPoly(e.a); return p ? p.map(v=>v.div(d)) : null;
   }
