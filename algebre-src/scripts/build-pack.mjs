@@ -25,7 +25,10 @@ export function buildPack(packId='equations-3eme',outDir='dist',options={}){
 
 const invoked=fileURLToPath(import.meta.url)===path.resolve(process.argv[1]||'');
 if(invoked){
-  const packId=process.argv[2]||'equations-3eme';
-  const outDir=process.argv[3]||'dist';
-  buildPack(packId,outDir,{allowPackSwitch:process.env.TRAINER_ALLOW_PACK_SWITCH==='1'});
+  const args=process.argv.slice(2);
+  const allowPackSwitch=args.includes('--allow-switch')||process.env.TRAINER_ALLOW_PACK_SWITCH==='1';
+  const positional=args.filter(arg=>!arg.startsWith('--'));
+  const packId=positional[0]||'equations-3eme';
+  const outDir=positional[1]||'dist';
+  buildPack(packId,outDir,{allowPackSwitch});
 }
