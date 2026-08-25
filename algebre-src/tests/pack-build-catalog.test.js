@@ -18,7 +18,7 @@ describe('trainer PWA build catalog',()=>{
   test('every build definition points to the matching runtime pack',async()=>{
     for(const id of PACK_BUILD_IDS){
       const config=getPackBuildConfig(id);
-      const moduleUrl=new URL(`../${config.module.replace(/^\.\/src\//,'')}`,import.meta.url);
+      const moduleUrl=new URL(`../${config.module}`,import.meta.url);
       const imported=await import(moduleUrl.href);
       expect(imported.default.id).toBe(id);
       expect(imported.default).toBe(TRAINER_PACKS[id]);
