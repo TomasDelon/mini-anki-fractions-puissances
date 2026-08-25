@@ -93,3 +93,5 @@ export const CALCUL_LITTERAL_3EME_PACK=defineTrainerPack({
     forbiddenTechniques:Object.freeze(['equation-solving','discriminant','quadratic-formula'])
   })
 });
+
+export default CALCUL_LITTERAL_3EME_PACK;
