@@ -9,12 +9,12 @@ function normalizeAttempt(value){
   if(!value||typeof value!=='object')return null;
   const mistakes=Number.isFinite(value.mistakes)?Math.max(0,Math.floor(value.mistakes)):0;
   const hintCount=Number.isFinite(value.hintCount)?Math.max(0,Math.floor(value.hintCount)):0;
-  const startedAt=Number.isFinite(value.startedAt)&&value.startedAt>0?Math.floor(value.startedAt):null;
+  const elapsedMs=Number.isFinite(value.elapsedMs)?Math.max(0,Math.floor(value.elapsedMs)):0;
   return {
     mistakes,
     hintCount,
     fullCorrectionUsed:Boolean(value.fullCorrectionUsed),
-    startedAt
+    elapsedMs
   };
 }
 
