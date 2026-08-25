@@ -97,6 +97,13 @@ export const CALCUL_LITTERAL_3EME_PACK=defineTrainerPack({
   }),
   skills:SKILLS,
   categorySkills:CATEGORY_SKILLS,
+  training:Object.freeze({
+    adaptiveMixed:true,
+    mixedCategory:'mixed',
+    sampleSize:10,
+    recentCategoryPenalty:0.18,
+    exploration:0.1
+  }),
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
