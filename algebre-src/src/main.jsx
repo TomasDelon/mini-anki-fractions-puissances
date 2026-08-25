@@ -3,6 +3,7 @@ import { MathfieldElement } from 'mathlive';
 import 'mathlive/fonts.css';
 import './styles.css';
 import './trainer/trainer.css';
+import './trainer/progress.css';
 import activePack from '@active-trainer-pack';
 import { analyze, setEqual } from './math.js';
 import { TrainerApp } from './trainer/TrainerApp.jsx';
