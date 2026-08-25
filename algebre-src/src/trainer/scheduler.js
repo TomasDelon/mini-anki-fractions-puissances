@@ -28,16 +28,22 @@ function candidateScore(pack,progress,exercise,seed,recent){
 
 function isRejected(candidate,seed,recent,currentPrompt){
   if(currentPrompt&&candidate.promptLatex===currentPrompt)return true;
-  return recent.some(item=>item?.seed===seed||item?.promptLatex===candidate.promptLatex);
+  return recent.some(item=>(item?.seed!==null&&item?.seed!==undefined&&item.seed===seed)||item?.promptLatex===candidate.promptLatex);
+}
+
+function combinedRecent(progress,sessionRecent,limit=8){
+  const persisted=Array.isArray(progress.recentExercises)?progress.recentExercises.slice(-limit):[];
+  const live=Array.isArray(sessionRecent)?sessionRecent:[];
+  return [...persisted,...live].slice(-(limit+live.length));
 }
 
 export function selectNextExercise(pack,category,progress,options={}){
-  const recent=Array.isArray(options.recent)?options.recent:[];
+  const normalizedProgress=normalizeProgress(pack,progress);
+  const recent=combinedRecent(normalizedProgress,options.recent,options.historySize??8);
   const currentPrompt=options.currentPrompt||'';
   const nextSeed=options.nextSeed||pack.nextSeed;
   const adaptive=pack.training?.adaptiveMixed&&category===pack.training.mixedCategory;
   const sampleSize=options.sampleSize??(adaptive?pack.training.sampleSize:1);
-  const normalizedProgress=normalizeProgress(pack,progress);
   let fallback=null,best=null;
 
   for(let index=0;index<sampleSize;index++){
