@@ -20,9 +20,18 @@ const WORKSPACE=createWorkspace({
 });
 
 const SKILLS=Object.freeze({
-  distributivity:{title:'Développer avec la distributivité'},
-  'collect-like-terms':{title:'Réduire les termes semblables'},
-  'integer-arithmetic':{title:'Calculer avec les entiers relatifs'}
+  distributivity:{
+    title:'Développer avec la distributivité',
+    hint:'Multiplie chaque terme de la parenthèse par le facteur placé devant.'
+  },
+  'collect-like-terms':{
+    title:'Réduire les termes semblables',
+    hint:'Regroupe les termes en x entre eux et les constantes entre elles.'
+  },
+  'integer-arithmetic':{
+    title:'Calculer avec les entiers relatifs',
+    hint:'Surveille les signes quand tu additionnes ou multiplies des entiers relatifs.'
+  }
 });
 
 const CATEGORY_SKILLS=Object.freeze({
