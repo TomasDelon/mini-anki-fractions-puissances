@@ -5,7 +5,7 @@ import 'mathlive/fonts.css';
 import './styles.css';
 import './trainer/trainer.css';
 import { analyze, setEqual } from './math.js';
-import { EQUATIONS_3EME_PACK } from './packs/equations3eme.js';
+import { resolveTrainerPack } from './packs/index.js';
 import {
   createDerivationRow,
   cycleRelation,
@@ -19,12 +19,12 @@ import { StaticMath, configureMathField } from './trainer/MathView.jsx';
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
 
-const PACK=EQUATIONS_3EME_PACK;
+const PACK=resolveTrainerPack(location.search);
 const CATEGORIES=PACK.categories;
 const CATEGORY_INFO=PACK.categoryInfo;
 const WORKSPACE=PACK.workspace;
 const STORAGE_KEY=`math-trainer-${PACK.id}-session-v${PACK.version}`;
-const LEGACY_STORAGE_KEYS=['algebre-3eme-session-v3','algebre-3eme-session-v2'];
+const LEGACY_STORAGE_KEYS=PACK.id==='equations-3eme'?['algebre-3eme-session-v3','algebre-3eme-session-v2']:[];
 const MAX_ROWS=20;
 
 function loadSession(){
@@ -47,7 +47,7 @@ function clearSession(){
 
 function Home({onChoose,onResume}){
   const saved=loadSession();
-  return <main class="home-screen">
+  return <main class="home-screen" data-pack={PACK.id}>
     <header class="home-header"><h1>{PACK.title}</h1><p>Choisis ce que tu veux pratiquer.</p></header>
     {saved&&<button class="resume-card" type="button" onClick={onResume}><span>Reprendre</span><strong>{CATEGORY_INFO[saved.category].title}</strong></button>}
     <div class="category-list">
@@ -122,7 +122,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const invalid=feedback.kind==='error'?feedback.row:-1, incomplete=feedback.kind==='incomplete'?feedback.row:-1;
   const success=feedback.kind==='success';
 
-  return <main class="practice-screen">
+  return <main class="practice-screen" data-pack={PACK.id}>
     <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{CATEGORY_INFO[category].title}</div><div class="header-spacer"/></header>
     <DerivationEditor
       promptKey={`${seed}:${exercise.promptLatex}`}
