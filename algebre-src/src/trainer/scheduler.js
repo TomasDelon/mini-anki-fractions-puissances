@@ -1,4 +1,4 @@
-import { categoryMastery, exerciseReviewUrgency, normalizeProgress } from './progress.js';
+import { categoryMastery, exerciseReadiness, exerciseReviewUrgency, normalizeProgress } from './progress.js';
 
 function sourceCategory(exercise){
   return exercise?.sourceCategory||exercise?.category||null;
@@ -21,11 +21,13 @@ function candidateScore(pack,progress,exercise,seed,recent,now){
   const estimate=categoryMastery(pack,progress,category);
   const categoryNeed=estimate?1-estimate.mastery:1.08;
   const reviewNeed=exerciseReviewUrgency(pack,progress,exercise,now);
+  const readiness=exerciseReadiness(pack,progress,exercise);
   const need=reviewNeed>0?reviewNeed*.72+categoryNeed*.28:categoryNeed;
+  const readinessWeight=.45+.55*readiness;
   const coverageBonus=estimate?(1-estimate.coverage)*0.2:0.18;
   const repeatPenalty=recentCategoryCount(recent,category)*pack.training.recentCategoryPenalty;
   const exploration=seededJitter(seed)*pack.training.exploration;
-  return need+coverageBonus+exploration-repeatPenalty;
+  return need*readinessWeight+coverageBonus+exploration-repeatPenalty;
 }
 
 function isRejected(candidate,seed,recent,currentPrompt){
