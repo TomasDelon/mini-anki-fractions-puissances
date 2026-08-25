@@ -1,4 +1,5 @@
 import { hydrateDerivationRows, serializeDerivationRows } from './core.js';
+import { resolveExerciseWorkspace } from './pack.js';
 
 export function sessionStorageKey(pack){
   return `math-trainer-${pack.id}-session-v${pack.version}`;
@@ -19,8 +20,11 @@ export function createSessionStore(pack,options={}){
         const raw=storage.getItem(candidate);if(!raw)continue;
         const value=JSON.parse(raw);
         if(!value||!pack.categories.includes(value.category)||!Number.isFinite(value.seed)||!Array.isArray(value.rows)||!value.rows.length)continue;
-        const rows=serializeDerivationRows(hydrateDerivationRows(value.rows.slice(0,maxRows),pack.workspace));
-        return {category:value.category,seed:value.seed>>>0,rows};
+        const seed=value.seed>>>0;
+        const exercise=pack.generateExercise(value.category,seed);
+        const workspace=resolveExerciseWorkspace(pack,exercise);
+        const rows=serializeDerivationRows(hydrateDerivationRows(value.rows.slice(0,maxRows),workspace));
+        return {category:value.category,seed,rows};
       }catch{}
     }
     return null;
