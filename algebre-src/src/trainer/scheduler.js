@@ -1,4 +1,4 @@
-import { categoryMastery, normalizeProgress } from './progress.js';
+import { categoryMastery, exerciseReviewUrgency, normalizeProgress } from './progress.js';
 
 function sourceCategory(exercise){
   return exercise?.sourceCategory||exercise?.category||null;
@@ -16,10 +16,12 @@ function recentCategoryCount(recent,category){
   return recent.reduce((count,item)=>count+(item?.sourceCategory===category?1:0),0);
 }
 
-function candidateScore(pack,progress,exercise,seed,recent){
+function candidateScore(pack,progress,exercise,seed,recent,now){
   const category=sourceCategory(exercise);
   const estimate=categoryMastery(pack,progress,category);
-  const need=estimate?1-estimate.mastery:1.08;
+  const categoryNeed=estimate?1-estimate.mastery:1.08;
+  const reviewNeed=exerciseReviewUrgency(pack,progress,exercise,now);
+  const need=reviewNeed>0?reviewNeed*.72+categoryNeed*.28:categoryNeed;
   const coverageBonus=estimate?(1-estimate.coverage)*0.2:0.18;
   const repeatPenalty=recentCategoryCount(recent,category)*pack.training.recentCategoryPenalty;
   const exploration=seededJitter(seed)*pack.training.exploration;
@@ -43,6 +45,7 @@ export function selectNextExercise(pack,category,progress,options={}){
   const recent=combinedRecent(normalizedProgress,options.recent,options.historySize??pack.training.historySize);
   const currentPrompt=options.currentPrompt||'';
   const nextSeed=options.nextSeed||pack.nextSeed;
+  const now=options.now??new Date();
   const adaptive=pack.training?.adaptiveMixed&&category===pack.training.mixedCategory;
   const sampleSize=options.sampleSize??(adaptive?pack.training.sampleSize:1);
   let fallback=null,best=null;
@@ -54,7 +57,7 @@ export function selectNextExercise(pack,category,progress,options={}){
     if(!fallback)fallback=entry;
     if(isRejected(exercise,seed,recent,currentPrompt))continue;
     if(!adaptive)return entry;
-    const score=candidateScore(pack,normalizedProgress,exercise,seed,recent);
+    const score=candidateScore(pack,normalizedProgress,exercise,seed,recent,now);
     if(!best||score>best.score)best={...entry,score};
   }
 
