@@ -25,6 +25,33 @@ describe('trainer session store',()=>{
     expect(store.load()).toEqual({category:'linear',seed:42,rows:[{value:'3x=9',relationBefore:'iff'}]});
   });
 
+  test('persists attempt assistance and mistakes across a reload',()=>{
+    const storage=memoryStorage();
+    const store=createSessionStore(EQUATIONS_3EME_PACK,{storage});
+    store.save({
+      category:'simple',
+      seed:17,
+      rows:[{value:'x+3=9',relationBefore:'iff'}],
+      attempt:{mistakes:2,hintCount:3,fullCorrectionUsed:true,startedAt:123456789}
+    });
+    expect(store.load()).toEqual({
+      category:'simple',
+      seed:17,
+      rows:[{value:'x+3=9',relationBefore:'iff'}],
+      attempt:{mistakes:2,hintCount:3,fullCorrectionUsed:true,startedAt:123456789}
+    });
+  });
+
+  test('normalizes malformed attempt counters instead of trusting stored values',()=>{
+    const storage=memoryStorage();
+    const store=createSessionStore(EQUATIONS_3EME_PACK,{storage});
+    store.save({
+      category:'simple',seed:5,rows:[''],
+      attempt:{mistakes:-4.2,hintCount:2.9,fullCorrectionUsed:1,startedAt:-10}
+    });
+    expect(store.load().attempt).toEqual({mistakes:0,hintCount:2,fullCorrectionUsed:true,startedAt:null});
+  });
+
   test('migrates a legacy string-row session safely',()=>{
     const storage=memoryStorage();
     storage.setItem('legacy',JSON.stringify({category:'simple',seed:7,rows:['x=3']}));
