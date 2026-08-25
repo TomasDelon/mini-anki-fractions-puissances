@@ -94,4 +94,12 @@ describe('equations 3eme pack contract',()=>{
     expect(EQUATIONS_3EME_PACK.pedagogy.forbiddenTechniques).toContain('discriminant');
     expect(EQUATIONS_3EME_PACK.pedagogy.forbiddenTechniques).toContain('generic-trinomial-root-finding');
   });
+
+  test('declares reusable conceptual hints and bounded adaptive-history settings',()=>{
+    expect(EQUATIONS_3EME_PACK.skills['equation-isolation'].hint).toMatch(/même opération/i);
+    expect(EQUATIONS_3EME_PACK.skills.distributivity.hint).toMatch(/parenthèses/i);
+    expect(EQUATIONS_3EME_PACK.training.adaptiveMixed).toBe(true);
+    expect(EQUATIONS_3EME_PACK.training.historySize).toBe(8);
+    expect(EQUATIONS_3EME_PACK.training.sampleSize).toBeGreaterThan(1);
+  });
 });
