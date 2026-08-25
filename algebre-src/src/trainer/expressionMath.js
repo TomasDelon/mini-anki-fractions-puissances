@@ -152,10 +152,31 @@ function samePoly(a,b){
   return p.length===q.length&&p.every((v,i)=>v.eq(q[i]));
 }
 
-function astComplexity(e){
-  if(e.k==='const'||e.k==='var')return 0;
-  if(e.k==='neg'||e.k==='square')return 1+astComplexity(e.v);
-  return 1+astComplexity(e.a)+astComplexity(e.b);
+function flattenAdditive(e,out=[]){
+  if(e.k==='add'){flattenAdditive(e.a,out);flattenAdditive(e.b,out);return out;}
+  if(e.k==='sub'){flattenAdditive(e.a,out);flattenAdditive({k:'neg',v:e.b},out);return out;}
+  out.push(e);return out;
+}
+
+function monomialPower(e){
+  const p=toPoly(e);if(!p)return null;
+  let found=null;
+  for(let power=0;power<p.length;power++){
+    if(p[power].isZero())continue;
+    if(found!==null)return null;
+    found=power;
+  }
+  return found===null?0:found;
+}
+
+function isReducedPolynomialAst(ast){
+  const powers=new Set();
+  for(const term of flattenAdditive(ast)){
+    const power=monomialPower(term);
+    if(power===null||powers.has(power))return false;
+    powers.add(power);
+  }
+  return true;
 }
 
 function absBig(n){return n<0n?-n:n;}
@@ -184,7 +205,7 @@ export function analyzeExpression(latex){
     const ast=parseExpression(latex);
     const polynomial=toPoly(ast);
     if(!polynomial)return {kind:'unsupported',message:'Écriture hors du moteur de calcul littéral.'};
-    return {kind:'ok',polynomial,canonicalLatex:canonicalPolynomialLatex(polynomial),complexity:astComplexity(ast)};
+    return {kind:'ok',polynomial,canonicalLatex:canonicalPolynomialLatex(polynomial),reduced:isReducedPolynomialAst(ast)};
   }catch(error){
     return {kind:'incomplete',message:error instanceof Error?error.message:'Expression incomplète'};
   }
@@ -213,6 +234,5 @@ export function validateEqualityChain(promptLatex,rows,expectedLatex){
   const actual=analyzeExpression(last),expected=analyzeExpression(expectedLatex);
   if(actual.kind!=='ok'||expected.kind!=='ok')return {kind:'continue',message:'Correct jusqu’ici. Continue le calcul.'};
   const equivalent=samePoly(actual.polynomial,expected.polynomial);
-  const reducedEnough=actual.complexity<=expected.complexity;
-  return equivalent&&reducedEnough?{kind:'success'}:{kind:'continue',message:'Correct jusqu’ici. Continue à développer ou réduire.'};
+  return equivalent&&actual.reduced?{kind:'success'}:{kind:'continue',message:'Correct jusqu’ici. Continue à développer ou réduire.'};
 }
