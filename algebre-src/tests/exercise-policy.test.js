@@ -16,10 +16,22 @@ describe('per-exercise interaction policy',()=>{
     expect(EQUATIONS_3EME_PACK.workspace.allowedRelations).toEqual(['iff']);
   });
 
-  test('an individual question can switch to the relation keyboard',()=>{
+  test('an individual question can add relation choices while keeping the normal math keyboard',()=>{
+    const keyboard=resolveExerciseKeyboard(EQUATIONS_3EME_PACK,{keyboard:{extraKeys:['relationIff','relationImplies']}});
+    expect(keyboard.profile).toBe('equations-3eme');
+    expect(keyboard.extraKeys).toEqual(['relationIff','relationImplies']);
+    expect(keyboard.mobileMode).toBe('full');
+    expect(keyboard.desktopMode).toBe('full');
+  });
+
+  test('an individual question can also replace the whole keyboard profile when needed',()=>{
     const keyboard=resolveExerciseKeyboard(EQUATIONS_3EME_PACK,{keyboard:{profile:'derivation-relations',desktopMode:'compact'}});
     expect(keyboard.profile).toBe('derivation-relations');
     expect(keyboard.desktopMode).toBe('compact');
     expect(keyboard.mobileMode).toBe('full');
+  });
+
+  test('unknown extra keys are rejected at configuration time',()=>{
+    expect(()=>resolveExerciseKeyboard(EQUATIONS_3EME_PACK,{keyboard:{extraKeys:['not-a-real-key']}})).toThrow(/Unknown key/);
   });
 });
