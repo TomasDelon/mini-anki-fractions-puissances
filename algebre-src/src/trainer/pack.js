@@ -42,6 +42,20 @@ function normalizeCategorySkills(categories,categorySkills={},skills={}){
   return Object.freeze(normalized);
 }
 
+function normalizeTrainingConfig(categories,training={}){
+  const mixedCategory=training.mixedCategory??null;
+  if(mixedCategory!==null&&!categories.includes(mixedCategory)) throw new Error(`Unknown mixed training category: ${mixedCategory}`);
+  const sampleSize=training.sampleSize??12;
+  if(!Number.isInteger(sampleSize)||sampleSize<1||sampleSize>64) throw new Error('training.sampleSize must be an integer between 1 and 64');
+  return Object.freeze({
+    adaptiveMixed:Boolean(training.adaptiveMixed&&mixedCategory),
+    mixedCategory,
+    sampleSize,
+    recentCategoryPenalty:Number.isFinite(training.recentCategoryPenalty)?Math.max(0,training.recentCategoryPenalty):0.16,
+    exploration:Number.isFinite(training.exploration)?Math.max(0,Math.min(0.5,training.exploration)):0.12
+  });
+}
+
 function assertKeyboardConfig(keyboard){
   if(!keyboard?.profile) throw new Error('A trainer pack needs a keyboard profile');
   const profile=getKeyboardProfile(keyboard.profile);
@@ -70,17 +84,20 @@ export function defineTrainerPack(config){
   if(typeof config.validateExercise!=='function') throw new Error('A trainer pack needs validateExercise(exercise, rows)');
   if(typeof config.nextSeed!=='function') throw new Error('A trainer pack needs nextSeed()');
 
+  const categories=Object.freeze([...config.categories]);
   const skills=normalizeSkills(config.skills);
-  const categorySkills=normalizeCategorySkills(config.categories,config.categorySkills,skills);
+  const categorySkills=normalizeCategorySkills(categories,config.categorySkills,skills);
+  const training=normalizeTrainingConfig(categories,config.training);
 
   return Object.freeze({
     ...config,
-    categories:Object.freeze([...config.categories]),
+    categories,
     categoryInfo:freezeRecord(config.categoryInfo),
     keyboard:normalizeKeyboardConfig(config.keyboard),
     session:normalizeSessionConfig(config.session),
     skills,
     categorySkills,
+    training,
     pedagogy:config.pedagogy ? Object.freeze({...config.pedagogy}) : Object.freeze({})
   });
 }
