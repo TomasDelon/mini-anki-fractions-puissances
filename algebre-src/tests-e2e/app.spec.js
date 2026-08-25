@@ -83,9 +83,11 @@ test('fraction and square-root keys insert real structures',async({page})=>{
   expect(await fieldValue(page)).toContain('\\sqrt');
 });
 
-test('correct answer -> next exercise keeps a healthy keyboard',async({page})=>{
+test('correct answer -> next exercise visibly refreshes the prompt and keeps a healthy keyboard',async({page})=>{
   await openSimple(page);
-  const prompt=await page.locator('.prompt-math').evaluate(m=>m.textContent.trim().replace(/^\\displaystyle\s*/,''));
+  const promptLocator=page.locator('.prompt-math');
+  const oldPromptNode=await promptLocator.elementHandle();
+  const prompt=await promptLocator.evaluate(m=>m.textContent.trim().replace(/^\\displaystyle\s*/,''));
   const answer=await page.evaluate(p=>{
     const a=window.__ALGEBRE_TEST__.analyze(p);
     if(a.kind!=='ok'||a.set.kind!=='finite'||a.set.values.length!==1)throw new Error('Unexpected simple exercise');
@@ -96,6 +98,13 @@ test('correct answer -> next exercise keeps a healthy keyboard',async({page})=>{
   await expect(page.getByText('Correct.')).toBeVisible();
   await expect(page.locator('.keyboard')).toHaveCount(0);
   await page.getByRole('button',{name:'Exercice suivant'}).click();
+
+  // Regression for MathLive static rendering: a new exercise must reconnect a
+  // fresh <math-span>; changing only its textContent can leave the old visual.
+  await expect.poll(()=>oldPromptNode.evaluate(el=>el.isConnected)).toBe(false);
+  const nextPrompt=await promptLocator.evaluate(m=>m.textContent.trim().replace(/^\\displaystyle\s*/,''));
+  expect(nextPrompt).not.toBe(prompt);
+
   await expect(page.locator('.keyboard')).toBeVisible();
   await expect(page.getByRole('button',{name:'Nouvelle ligne'})).toBeVisible();
   await page.getByRole('button',{name:'x',exact:true}).click();
