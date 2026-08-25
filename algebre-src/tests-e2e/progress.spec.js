@@ -31,11 +31,14 @@ test('a completed exercise updates persistent skill progress and the home screen
   const progress=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),PROGRESS_KEY);
   expect(progress.completed).toBe(1);
   expect(progress.skills['equation-isolation'].attempts).toBe(1);
+  expect(progress.recentExercises).toHaveLength(1);
+  expect(await page.evaluate(key=>localStorage.getItem(key),SESSION_KEY)).toBeNull();
 
   await page.getByRole('button',{name:'Retour aux catégories'}).click();
   const simple=page.getByRole('button',{name:/Équations simples/});
   await expect(simple.locator('.category-progress')).toBeVisible();
   await expect(simple.locator('.category-progress')).toHaveAttribute('aria-label',/Progression estimée/);
+  await expect(page.getByRole('button',{name:/Reprendre/})).toHaveCount(0);
 });
 
 test('progressive hints reveal strategy before mathematics and count as assistance',async({page})=>{
