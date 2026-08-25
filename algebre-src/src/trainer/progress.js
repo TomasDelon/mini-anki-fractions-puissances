@@ -3,7 +3,6 @@ import { resolveExerciseDifficulty, resolveExerciseSkills } from './pack.js';
 export const PROGRESS_VERSION=1;
 export const RECENT_EXERCISE_LIMIT=24;
 const HOUR_MS=60*60*1000;
-const DAY_MS=24*HOUR_MS;
 
 const clamp01=value=>Math.max(0,Math.min(1,value));
 
@@ -98,6 +97,36 @@ export function normalizeProgress(pack,value){
   };
 }
 
+export function skillConfidence(skill){
+  const state=normalizeSkill(skill);
+  return state.attempts===0?0:1-Math.exp(-state.attempts/3);
+}
+
+export function skillEffectiveMastery(skill){
+  const state=normalizeSkill(skill);
+  return state.mastery*skillConfidence(state);
+}
+
+function readinessFromNormalized(pack,progress,skillId){
+  const definition=pack.skills?.[skillId];
+  if(!definition)throw new Error(`Unknown skill ${skillId}`);
+  const prerequisites=definition.prerequisites||[];
+  if(!prerequisites.length)return 1;
+  const prerequisiteMastery=Math.min(...prerequisites.map(id=>skillEffectiveMastery(progress.skills[id])));
+  return .2+.8*prerequisiteMastery;
+}
+
+export function skillReadiness(pack,progress,skillId){
+  return readinessFromNormalized(pack,normalizeProgress(pack,progress),skillId);
+}
+
+export function exerciseReadiness(pack,progress,exercise){
+  const normalized=normalizeProgress(pack,progress);
+  const ids=resolveExerciseSkills(pack,exercise);
+  if(!ids.length)return 1;
+  return Math.min(...ids.map(id=>readinessFromNormalized(pack,normalized,id)));
+}
+
 export function skillReviewIntervalMs(skill){
   const state=normalizeSkill(skill);
   if(state.attempts===0)return 0;
@@ -111,9 +140,7 @@ export function skillReviewUrgency(skill,now=new Date()){
   const state=normalizeSkill(skill);
   if(state.attempts===0)return 1.25;
 
-  const confidence=1-Math.exp(-state.attempts/3);
-  const effectiveMastery=state.mastery*confidence;
-  const weakness=1-effectiveMastery;
+  const weakness=1-skillEffectiveMastery(state);
   const interval=skillReviewIntervalMs(state);
   const seenAt=state.lastSeen?Date.parse(state.lastSeen):NaN;
   const age=Number.isFinite(seenAt)?Math.max(0,timestamp(now)-seenAt):interval;
@@ -133,6 +160,8 @@ export function skillReviewState(pack,progress,skillId,now=new Date()){
     skillId,
     attempts:skill.attempts,
     mastery:skill.mastery,
+    effectiveMastery:skillEffectiveMastery(skill),
+    readiness:readinessFromNormalized(pack,normalized,skillId),
     streak:skill.streak,
     intervalMs,
     urgency:skillReviewUrgency(skill,now),
@@ -157,7 +186,7 @@ export function dueSkills(pack,progress,now=new Date(),limit=Infinity){
   return Object.keys(pack.skills||{})
     .map(id=>skillReviewState(pack,normalized,id,now))
     .filter(state=>state.due)
-    .sort((a,b)=>b.urgency-a.urgency||a.attempts-b.attempts||a.skillId.localeCompare(b.skillId))
+    .sort((a,b)=>b.urgency-a.urgency||b.readiness-a.readiness||a.attempts-b.attempts||a.skillId.localeCompare(b.skillId))
     .slice(0,Math.max(0,Number.isFinite(limit)?Math.floor(limit):Object.keys(pack.skills||{}).length));
 }
 
@@ -225,11 +254,7 @@ export function categoryMastery(pack,progress,category){
   const observed=states.filter(skill=>skill.attempts>0);
   if(!observed.length) return null;
   const rawMastery=states.reduce((sum,skill)=>sum+(skill.attempts>0?skill.mastery:0),0)/ids.length;
-  const mastery=states.reduce((sum,skill)=>{
-    if(!skill.attempts) return sum;
-    const confidence=1-Math.exp(-skill.attempts/3);
-    return sum+skill.mastery*confidence;
-  },0)/ids.length;
+  const mastery=states.reduce((sum,skill)=>sum+skillEffectiveMastery(skill),0)/ids.length;
   const attempts=observed.reduce((sum,skill)=>sum+skill.attempts,0);
   return {mastery,rawMastery,attempts,coverage:observed.length/ids.length};
 }
@@ -239,8 +264,8 @@ export function weakestSkills(pack,progress,limit=3){
   return Object.entries(pack.skills||{})
     .map(([id,definition])=>({id,title:definition.title,...normalized.skills[id]}))
     .sort((a,b)=>{
-      const aScore=a.attempts===0?-1:a.mastery;
-      const bScore=b.attempts===0?-1:b.mastery;
+      const aScore=a.attempts===0?-1:skillEffectiveMastery(a);
+      const bScore=b.attempts===0?-1:skillEffectiveMastery(b);
       return aScore-bScore||a.attempts-b.attempts||a.id.localeCompare(b.id);
     })
     .slice(0,Math.max(0,limit));
