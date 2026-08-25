@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { CALCUL_LITTERAL_3EME_PACK } from '../src/packs/calculLitteral3eme.js';
 import { EQUATIONS_3EME_PACK } from '../src/packs/equations3eme.js';
 import {
+  RECENT_EXERCISE_LIMIT,
   categoryMastery,
   createEmptyProgress,
   createProgressStore,
@@ -28,6 +29,15 @@ describe('generic skill progress',()=>{
     expect(next.skills['equation-isolation'].attempts).toBe(1);
     expect(next.skills['square-root'].attempts).toBe(0);
     expect(next.categories.parentheses.completed).toBe(1);
+    expect(next.recentExercises).toHaveLength(1);
+    expect(next.recentExercises[0]).toMatchObject({
+      seed:1234,
+      sourceCategory:'parentheses',
+      promptLatex:exercise.promptLatex,
+      mistakes:0,
+      hints:0,
+      durationMs:20000
+    });
   });
 
   test('mixed exercises credit their actual source category',()=>{
@@ -36,6 +46,17 @@ describe('generic skill progress',()=>{
     const next=recordCompletion(EQUATIONS_3EME_PACK,createEmptyProgress(EQUATIONS_3EME_PACK),exercise,{mistakes:1},new Date('2026-08-25T12:00:00Z'));
     expect(next.categories[exercise.sourceCategory].completed).toBe(1);
     expect(next.categories.mixed).toBeUndefined();
+    expect(next.recentExercises[0].sourceCategory).toBe(exercise.sourceCategory);
+  });
+
+  test('recent exercise history is bounded and keeps the newest work',()=>{
+    let progress=createEmptyProgress(EQUATIONS_3EME_PACK);
+    for(let seed=1;seed<=RECENT_EXERCISE_LIMIT+6;seed++){
+      progress=recordCompletion(EQUATIONS_3EME_PACK,progress,EQUATIONS_3EME_PACK.generateExercise('simple',seed),{},new Date(2026,7,25,12,0,seed));
+    }
+    expect(progress.recentExercises).toHaveLength(RECENT_EXERCISE_LIMIT);
+    expect(progress.recentExercises.at(-1).seed).toBe(RECENT_EXERCISE_LIMIT+6);
+    expect(progress.recentExercises[0].seed).toBe(7);
   });
 
   test('mistakes reduce the mastery signal without making a completion worthless',()=>{
@@ -54,6 +75,7 @@ describe('generic skill progress',()=>{
     expect(equationStore.key).not.toBe(calculationStore.key);
     equationStore.complete(EQUATIONS_3EME_PACK.generateExercise('simple',1),{mistakes:0});
     expect(equationStore.load().completed).toBe(1);
+    expect(equationStore.load().recentExercises).toHaveLength(1);
     expect(calculationStore.load().completed).toBe(0);
 
     storage.setItem(progressStorageKey(CALCUL_LITTERAL_3EME_PACK),'{broken');
