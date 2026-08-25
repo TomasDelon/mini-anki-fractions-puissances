@@ -5,22 +5,40 @@ import 'mathlive/fonts.css';
 import './styles.css';
 import { analyze, setEqual, validateChain } from './math.js';
 import { CATEGORIES, CATEGORY_INFO, generateExercise, randomSeed } from './exercises.js';
+import { EQUATIONS_3EME_PACK } from './packs/equations3eme.js';
+import {
+  createDerivationRow,
+  cycleRelation,
+  hydrateDerivationRows,
+  relationInfo,
+  serializeDerivationRows,
+  validateDerivation
+} from './trainer/core.js';
 
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
 
-const STORAGE_KEY='algebre-3eme-session-v2';
+const STORAGE_KEY='algebre-3eme-session-v3';
+const LEGACY_STORAGE_KEY='algebre-3eme-session-v2';
 const MAX_ROWS=20;
+const WORKSPACE=EQUATIONS_3EME_PACK.workspace;
 
 function loadSession(){
-  try{
-    const x=JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if(!x||!CATEGORIES.includes(x.category)||!Number.isFinite(x.seed)||!Array.isArray(x.rows)||!x.rows.length) return null;
-    return {category:x.category,seed:x.seed>>>0,rows:x.rows.slice(0,MAX_ROWS).map(String)};
-  }catch{return null;}
+  for(const key of [STORAGE_KEY,LEGACY_STORAGE_KEY]){
+    try{
+      const x=JSON.parse(localStorage.getItem(key));
+      if(!x||!CATEGORIES.includes(x.category)||!Number.isFinite(x.seed)||!Array.isArray(x.rows)||!x.rows.length) continue;
+      const rows=serializeDerivationRows(hydrateDerivationRows(x.rows.slice(0,MAX_ROWS),WORKSPACE));
+      return {category:x.category,seed:x.seed>>>0,rows};
+    }catch{}
+  }
+  return null;
 }
 function saveSession(s){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch{} }
-function clearSession(){ try{localStorage.removeItem(STORAGE_KEY);}catch{} }
+function clearSession(){
+  try{localStorage.removeItem(STORAGE_KEY);}catch{}
+  try{localStorage.removeItem(LEGACY_STORAGE_KEY);}catch{}
+}
 
 function StaticMath({latex,className=''}){
   // MathLive's <math-span> renders when connected. Giving the rendered node a
@@ -55,7 +73,17 @@ function configureField(mf){
   mf.placeholderSymbol='□';
 }
 
-function MathRow({row,index,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,register}){
+function RelationMark({relation,workspace,hidden=false,onChange}){
+  const info=relationInfo(relation);
+  const editable=workspace.relationMode==='student'&&workspace.allowedRelations.length>1&&onChange;
+  if(hidden) return <span class="equiv equiv--hidden relation-mark" aria-hidden="true">{info.symbol||'='}</span>;
+  if(editable){
+    return <button type="button" class="equiv relation-mark relation-mark--editable" aria-label={`${info.aria}. Changer la relation`} onPointerDown={e=>e.preventDefault()} onClick={onChange}>{info.symbol}</button>;
+  }
+  return <span class="equiv relation-mark" aria-label={info.aria}>{info.symbol}</span>;
+}
+
+function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,register}){
   const ref=useRef(null);
   useEffect(()=>{
     const mf=ref.current; if(!mf)return;
@@ -68,14 +96,14 @@ function MathRow({row,index,isInvalid,isIncomplete,onValue,onFocus,onDirectPoint
     if(e.key==='Enter'){e.preventDefault();e.stopPropagation();onEnter(row.id);return;}
     if(e.key==='Backspace'&&e.currentTarget.value.trim()===''&&onDeleteEmpty(row.id)){e.preventDefault();e.stopPropagation();}
   };
-  return <div class={`math-row ${isInvalid?'math-row--invalid':''} ${isIncomplete?'math-row--incomplete':''}`}>
-    <span class="equiv" aria-hidden="true">⇔</span>
+  return <div class={`math-row derivation-row derivation-row--${workspace.layout} ${isInvalid?'math-row--invalid':''} ${isIncomplete?'math-row--incomplete':''}`}>
+    <RelationMark relation={row.relationBefore} workspace={workspace} onChange={()=>onRelationChange(row.id)}/>
     <math-field ref={ref} aria-label={`Étape ${index+1}`} onInput={e=>onValue(row.id,e.currentTarget.value)} onFocus={e=>onFocus(row.id,e.currentTarget)} onPointerDown={onDirectPointer} onKeyDown={keydown}/>
     <span class="row-mark" aria-label={isInvalid?'Erreur':undefined}>{isInvalid?'×':''}</span>
   </div>;
 }
 
-function Prompt({latex}){ return <div class="prompt-row"><span class="equiv equiv--hidden">⇔</span><StaticMath latex={`\\displaystyle ${latex}`} className="prompt-math"/><span class="row-mark"/></div>; }
+function Prompt({latex,workspace}){ return <div class={`prompt-row derivation-row derivation-row--${workspace.layout}`}><RelationMark relation={workspace.defaultRelation} workspace={workspace} hidden/><StaticMath latex={`\\displaystyle ${latex}`} className="prompt-math"/><span class="row-mark"/></div>; }
 
 const KEY_LABELS={
   times:'\\times',x:'x',square:'{}^{2}',pm:'\\pm',parentheses:'(\\square)',sqrt:'\\sqrt{\\square}',fraction:'\\dfrac{\\square}{\\square}',abs:'|\\square|'
@@ -138,16 +166,17 @@ function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpt
   </div>;
 }
 
-function Correction({exercise}){
+function Correction({exercise,workspace}){
   return <div class="correction-block"><div class="correction-title">Une correction possible</div><div class="correction-math">
-    <div class="correction-row correction-row--prompt"><span class="equiv equiv--hidden">⇔</span><StaticMath latex={`\\displaystyle ${exercise.promptLatex}`}/></div>
-    {exercise.correctionLatex.map((line,i)=><div class="correction-row" key={`${line}-${i}`}><span class="equiv">⇔</span><StaticMath latex={`\\displaystyle ${line}`}/></div>)}
+    <div class="correction-row correction-row--prompt"><RelationMark relation={workspace.defaultRelation} workspace={workspace} hidden/><StaticMath latex={`\\displaystyle ${exercise.promptLatex}`}/></div>
+    {exercise.correctionLatex.map((line,i)=><div class="correction-row" key={`${line}-${i}`}><RelationMark relation={exercise.correctionRelations?.[i]||workspace.defaultRelation} workspace={workspace}/><StaticMath latex={`\\displaystyle ${line}`}/></div>)}
   </div></div>;
 }
 
 function Practice({category,seed:initialSeed,initialRows,onBack}){
+  const workspace=WORKSPACE;
   const [seed,setSeed]=useState(initialSeed>>>0);
-  const [rows,setRows]=useState(()=>initialRows.map((value,id)=>({id,value})));
+  const [rows,setRows]=useState(()=>hydrateDerivationRows(initialRows,workspace));
   const [activeId,setActiveId]=useState(rows[0]?.id??0);
   const [activeField,setActiveField]=useState(null);
   const [feedback,setFeedback]=useState({kind:'editing'});
@@ -158,7 +187,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const fields=useRef(new Map());
   const exercise=useMemo(()=>generateExercise(category,seed),[category,seed]);
 
-  useEffect(()=>saveSession({category,seed,rows:rows.map(r=>r.value)}),[category,seed,rows]);
+  useEffect(()=>saveSession({category,seed,rows:serializeDerivationRows(rows)}),[category,seed,rows]);
   useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf){setActiveField(mf);if(!mf.hasFocus())mf.focus();}});},[seed]);
 
   const register=(id,mf)=>{
@@ -168,10 +197,15 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const edit=(id,value)=>{setRows(old=>old.map(r=>r.id===id?{...r,value}:r));setFeedback({kind:'editing'});setShowCorrection(false);};
   const focus=(id,mf)=>{setActiveId(id);setActiveField(mf);configureField(mf);};
   const directPointer=()=>setSelectionMode(false);
+  const changeRelation=id=>{
+    if(workspace.relationMode!=='student')return;
+    setRows(old=>old.map(row=>row.id===id?{...row,relationBefore:cycleRelation(row.relationBefore,workspace)}:row));
+    setFeedback({kind:'editing'});setShowCorrection(false);
+  };
   const addAfter=(id=activeId)=>{
     if(rows.length>=MAX_ROWS)return;
     const at=rows.findIndex(r=>r.id===id),pos=at<0?rows.length:at+1,newId=nextId.current++;
-    setRows(old=>[...old.slice(0,pos),{id:newId,value:''},...old.slice(pos)]);setActiveId(newId);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
+    setRows(old=>[...old.slice(0,pos),createDerivationRow(newId,'',workspace),...old.slice(pos)]);setActiveId(newId);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
     requestAnimationFrame(()=>fields.current.get(newId)?.focus());
   };
   const deleteEmpty=id=>{
@@ -181,7 +215,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
     setRows(old=>old.filter(r=>r.id!==id));setActiveId(target.id);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
     requestAnimationFrame(()=>{const mf=fields.current.get(target.id);if(mf){setActiveField(mf);mf.focus();mf.executeCommand('moveToMathfieldEnd');}});return true;
   };
-  const verify=()=>setFeedback(validateChain(exercise.promptLatex,rows.map(r=>r.value)));
+  const verify=()=>setFeedback(validateDerivation(exercise.promptLatex,rows,workspace,{iffChain:validateChain}));
   const next=()=>{
     // A new seed can legitimately generate the same visible equation. For a
     // learner, that looks as if "Suivant" did nothing, so reject both recent
@@ -189,15 +223,15 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
     let s=randomSeed(),guard=0;
     while((recent.includes(s)||generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=randomSeed();
     const id=nextId.current++;
-    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([{id,value:''}]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
+    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([createDerivationRow(id,'',workspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
   };
   const invalid=feedback.kind==='error'?feedback.row:-1, incomplete=feedback.kind==='incomplete'?feedback.row:-1;
   const success=feedback.kind==='success';
 
   return <main class="practice-screen">
     <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{CATEGORY_INFO[category].title}</div><div class="header-spacer"/></header>
-    <section class="workspace" aria-label="Résolution"><Prompt key={`${seed}:${exercise.promptLatex}`} latex={exercise.promptLatex}/><div class="student-rows">
-      {rows.map((row,i)=><MathRow key={row.id} row={row} index={i} isInvalid={i===invalid} isIncomplete={i===incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} register={register}/>) }
+    <section class={`workspace workspace--${workspace.layout}`} aria-label="Résolution"><Prompt key={`${seed}:${exercise.promptLatex}`} latex={exercise.promptLatex} workspace={workspace}/><div class="student-rows">
+      {rows.map((row,i)=><MathRow key={row.id} row={row} index={i} workspace={workspace} isInvalid={i===invalid} isIncomplete={i===incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} onRelationChange={changeRelation} register={register}/>) }
     </div></section>
     {!success&&<div class="practice-controls"><button type="button" class="verify-button" onClick={verify}>Vérifier</button></div>}
     <div class="feedback" aria-live="polite">
@@ -206,7 +240,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
       {success&&<div class="success-panel"><div class="feedback-message feedback-message--success">Correct.</div><button type="button" class="next-button" onClick={next}>Exercice suivant</button></div>}
       {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={()=>setShowCorrection(v=>!v)}>{showCorrection?'Masquer la correction':'Voir une correction'}</button>}
     </div>
-    {showCorrection&&<Correction exercise={exercise}/>} 
+    {showCorrection&&<Correction exercise={exercise} workspace={workspace}/>} 
     {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)}/>} 
   </main>;
 }
@@ -214,7 +248,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
 function App(){
   const [screen,setScreen]=useState({kind:'home'});
   if(screen.kind==='practice') return <Practice category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
-  return <Home onChoose={category=>{clearSession();setScreen({kind:'practice',category,seed:randomSeed(),rows:['']});}} onResume={()=>{const s=loadSession();if(s)setScreen({kind:'practice',...s});}}/>;
+  return <Home onChoose={category=>{clearSession();setScreen({kind:'practice',category,seed:randomSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=loadSession();if(s)setScreen({kind:'practice',...s});}}/>;
 }
 
 render(<App/>,document.getElementById('app'));
