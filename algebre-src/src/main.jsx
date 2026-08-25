@@ -5,7 +5,6 @@ import './styles.css';
 import './trainer/trainer.css';
 import './trainer/progress.css';
 import activePack from '@active-trainer-pack';
-import { analyze, setEqual } from './math.js';
 import { TrainerApp } from './trainer/TrainerApp.jsx';
 
 MathfieldElement.soundsDirectory=null;
@@ -21,10 +20,13 @@ async function resolveBootPack(){
 
 async function boot(){
   const pack=await resolveBootPack();
+  let debugMath=null;
+  if(__TRAINER_ALLOW_PACK_SWITCH__||import.meta.env.DEV) debugMath=await import('./math.js');
+
   render(<TrainerApp pack={pack}/>,document.getElementById('app'));
 
-  if(import.meta.env.DEV||location.hostname==='127.0.0.1'||location.hostname==='localhost'){
-    window.__ALGEBRE_TEST__={analyze,setEqual,generateExercise:pack.generateExercise,pack};
+  if(debugMath){
+    window.__ALGEBRE_TEST__={analyze:debugMath.analyze,setEqual:debugMath.setEqual,generateExercise:pack.generateExercise,pack};
   }
 }
 
