@@ -23,7 +23,10 @@ function saveSession(s){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s))
 function clearSession(){ try{localStorage.removeItem(STORAGE_KEY);}catch{} }
 
 function StaticMath({latex,className=''}){
-  return <math-span class={className} aria-hidden="true">{latex}</math-span>;
+  // MathLive's <math-span> renders when connected. Giving the rendered node a
+  // value-derived key guarantees that Preact replaces it when the LaTeX changes,
+  // instead of only mutating a hidden text node while the old visual remains.
+  return <math-span key={latex} class={className} aria-hidden="true">{latex}</math-span>;
 }
 
 function Home({onChoose,onResume}){
@@ -180,7 +183,11 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   };
   const verify=()=>setFeedback(validateChain(exercise.promptLatex,rows.map(r=>r.value)));
   const next=()=>{
-    let s=randomSeed(),guard=0; while(recent.includes(s)&&guard++<30)s=randomSeed();
+    // A new seed can legitimately generate the same visible equation. For a
+    // learner, that looks as if "Suivant" did nothing, so reject both recent
+    // seeds and an immediately repeated prompt.
+    let s=randomSeed(),guard=0;
+    while((recent.includes(s)||generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=randomSeed();
     const id=nextId.current++;
     setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([{id,value:''}]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
   };
@@ -189,7 +196,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
 
   return <main class="practice-screen">
     <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{CATEGORY_INFO[category].title}</div><div class="header-spacer"/></header>
-    <section class="workspace" aria-label="Résolution"><Prompt latex={exercise.promptLatex}/><div class="student-rows">
+    <section class="workspace" aria-label="Résolution"><Prompt key={`${seed}:${exercise.promptLatex}`} latex={exercise.promptLatex}/><div class="student-rows">
       {rows.map((row,i)=><MathRow key={row.id} row={row} index={i} isInvalid={i===invalid} isIncomplete={i===incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} register={register}/>) }
     </div></section>
     {!success&&<div class="practice-controls"><button type="button" class="verify-button" onClick={verify}>Vérifier</button></div>}
