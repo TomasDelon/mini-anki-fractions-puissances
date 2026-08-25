@@ -4,10 +4,10 @@ import { validateEqualityChain } from '../trainer/expressionMath.js';
 import { defineTrainerPack } from '../trainer/pack.js';
 
 const CATEGORY_INFO=Object.freeze({
-  develop:{title:'Développer',formula:'a(x+b)'},
-  'develop-reduce':{title:'Développer et réduire',formula:'a(x+b)+cx+d'},
-  reduce:{title:'Réduire',formula:'ax+b+cx+d'},
-  mixed:{title:'Mélange',formula:'\\text{calcul littéral}'}
+  develop:{title:'Développer',formula:'a(x+b)',difficulty:2},
+  'develop-reduce':{title:'Développer et réduire',formula:'a(x+b)+cx+d',difficulty:3},
+  reduce:{title:'Réduire',formula:'ax+b+cx+d',difficulty:2},
+  mixed:{title:'Mélange',formula:'\\text{calcul littéral}',difficulty:3}
 });
 const CATEGORIES=Object.freeze(Object.keys(CATEGORY_INFO));
 const BASE=Object.freeze(CATEGORIES.filter(category=>category!=='mixed'));
@@ -17,6 +17,19 @@ const WORKSPACE=createWorkspace({
   relationMode:'automatic',
   allowedRelations:['equals'],
   defaultRelation:'equals'
+});
+
+const SKILLS=Object.freeze({
+  distributivity:{title:'Développer avec la distributivité'},
+  'collect-like-terms':{title:'Réduire les termes semblables'},
+  'integer-arithmetic':{title:'Calculer avec les entiers relatifs'}
+});
+
+const CATEGORY_SKILLS=Object.freeze({
+  develop:['distributivity','integer-arithmetic'],
+  'develop-reduce':['distributivity','collect-like-terms','integer-arithmetic'],
+  reduce:['collect-like-terms','integer-arithmetic'],
+  mixed:Object.keys(SKILLS)
 });
 
 function xTerm(a){
@@ -63,7 +76,7 @@ function generateExercise(category,seed){
   if(category==='mixed'){
     const chosen=new RNG(seed).pick(BASE);
     const inner=generateExercise(chosen,(seed^0x7f4a7c15)>>>0);
-    return {...inner,id:`calcul-litteral:mixed:${seed}`,category:'mixed',seed};
+    return {...inner,id:`calcul-litteral:mixed:${seed}`,category:'mixed',sourceCategory:chosen,seed};
   }
   return ({develop,'develop-reduce':developReduce,reduce})[category](seed);
 }
@@ -82,6 +95,8 @@ export const CALCUL_LITTERAL_3EME_PACK=defineTrainerPack({
     mobileMode:'full',
     desktopMode:'compact'
   }),
+  skills:SKILLS,
+  categorySkills:CATEGORY_SKILLS,
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
