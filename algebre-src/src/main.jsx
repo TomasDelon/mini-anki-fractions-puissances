@@ -1,5 +1,5 @@
 import { h, Fragment, render } from 'preact';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { MathfieldElement } from 'mathlive';
 import 'mathlive/fonts.css';
 import './styles.css';
@@ -146,6 +146,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const [seed,setSeed]=useState(initialSeed>>>0);
   const [rows,setRows]=useState(()=>initialRows.map((value,id)=>({id,value})));
   const [activeId,setActiveId]=useState(rows[0]?.id??0);
+  const [activeField,setActiveField]=useState(null);
   const [feedback,setFeedback]=useState({kind:'editing'});
   const [showCorrection,setShowCorrection]=useState(false);
   const [selectionMode,setSelectionMode]=useState(false);
@@ -153,32 +154,35 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const nextId=useRef(Math.max(1,...rows.map(r=>r.id+1)));
   const fields=useRef(new Map());
   const exercise=useMemo(()=>generateExercise(category,seed),[category,seed]);
-  const activeField=fields.current.get(activeId)||null;
 
   useEffect(()=>saveSession({category,seed,rows:rows.map(r=>r.value)}),[category,seed,rows]);
-  useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf&&!mf.hasFocus())mf.focus();});},[seed]);
+  useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf){setActiveField(mf);if(!mf.hasFocus())mf.focus();}});},[seed]);
 
-  const register=useCallback((id,mf)=>{if(mf)fields.current.set(id,mf);else fields.current.delete(id);},[]);
+  const register=(id,mf)=>{
+    if(mf){fields.current.set(id,mf);if(id===activeId)setActiveField(mf);}
+    else{fields.current.delete(id);if(id===activeId)setActiveField(null);}
+  };
   const edit=(id,value)=>{setRows(old=>old.map(r=>r.id===id?{...r,value}:r));setFeedback({kind:'editing'});setShowCorrection(false);};
-  const focus=(id,mf)=>{setActiveId(id);configureField(mf);};
+  const focus=(id,mf)=>{setActiveId(id);setActiveField(mf);configureField(mf);};
   const directPointer=()=>setSelectionMode(false);
   const addAfter=(id=activeId)=>{
     if(rows.length>=MAX_ROWS)return;
     const at=rows.findIndex(r=>r.id===id),pos=at<0?rows.length:at+1,newId=nextId.current++;
-    setRows(old=>[...old.slice(0,pos),{id:newId,value:''},...old.slice(pos)]);setActiveId(newId);setSelectionMode(false);setFeedback({kind:'editing'});
+    setRows(old=>[...old.slice(0,pos),{id:newId,value:''},...old.slice(pos)]);setActiveId(newId);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
     requestAnimationFrame(()=>fields.current.get(newId)?.focus());
   };
   const deleteEmpty=id=>{
     if(rows.length<=1)return false;
     const at=rows.findIndex(r=>r.id===id);if(at<0||rows[at].value.trim()!=='')return false;
     const target=rows[Math.max(0,at-1)];
-    setRows(old=>old.filter(r=>r.id!==id));setActiveId(target.id);setSelectionMode(false);setFeedback({kind:'editing'});
-    requestAnimationFrame(()=>{const mf=fields.current.get(target.id);if(mf){mf.focus();mf.executeCommand('moveToMathfieldEnd');}});return true;
+    setRows(old=>old.filter(r=>r.id!==id));setActiveId(target.id);setActiveField(null);setSelectionMode(false);setFeedback({kind:'editing'});
+    requestAnimationFrame(()=>{const mf=fields.current.get(target.id);if(mf){setActiveField(mf);mf.focus();mf.executeCommand('moveToMathfieldEnd');}});return true;
   };
   const verify=()=>setFeedback(validateChain(exercise.promptLatex,rows.map(r=>r.value)));
   const next=()=>{
     let s=randomSeed(),guard=0; while(recent.includes(s)&&guard++<30)s=randomSeed();
-    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([{id:nextId.current++,value:''}]);setActiveId(nextId.current-1);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
+    const id=nextId.current++;
+    setRecent(x=>[...x.slice(-7),s]);setSeed(s);setRows([{id,value:''}]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setSelectionMode(false);
   };
   const invalid=feedback.kind==='error'?feedback.row:-1, incomplete=feedback.kind==='incomplete'?feedback.row:-1;
   const success=feedback.kind==='success';
@@ -208,7 +212,6 @@ function App(){
 
 render(<App/>,document.getElementById('app'));
 
-// Minimal hooks for end-to-end tests; no student data is exposed.
 if(import.meta.env.DEV || location.hostname==='127.0.0.1' || location.hostname==='localhost'){
   window.__ALGEBRE_TEST__={analyze,setEqual,generateExercise};
 }
