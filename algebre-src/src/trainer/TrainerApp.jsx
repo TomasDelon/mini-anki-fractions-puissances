@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createDerivationRow, cycleRelation, hydrateDerivationRows, serializeDerivationRows } from './core.js';
+import { completionHintCost, createHintSequence, revealHintCount, visibleHints } from './hints.js';
 import { resolveExerciseKeyboard, resolveExerciseWorkspace } from './pack.js';
 import { categoryMastery, createProgressStore } from './progress.js';
 import { recentExerciseEntry, selectNextExercise } from './scheduler.js';
@@ -32,6 +33,16 @@ function TrainerHome({pack,sessionStore,progressStore,onChoose,onResume}){
   </main>;
 }
 
+function HintPanel({hints}){
+  if(!hints.length)return null;
+  return <div class="hint-panel" aria-live="polite">
+    {hints.map(hint=><div class={`hint-item hint-item--${hint.kind}`} key={hint.id}>
+      <div class="hint-title">{hint.title}</div>
+      {hint.kind==='math'?<StaticMath latex={`\\displaystyle ${hint.latex}`} className="hint-math"/>:<div class="hint-text">{hint.text}</div>}
+    </div>)}
+  </div>;
+}
+
 function Correction({exercise,workspace,pack}){
   return <div class="correction-block"><div class="correction-title">{pack.ui?.correctionTitle||'Une correction possible'}</div><div class="correction-math">
     <div class="correction-row correction-row--prompt"><RelationMark relation={workspace.defaultRelation} workspace={workspace} hidden/><StaticMath latex={`\\displaystyle ${exercise.promptLatex}`}/></div>
@@ -44,12 +55,14 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
   const exercise=useMemo(()=>pack.generateExercise(category,seed),[pack,category,seed]);
   const workspace=resolveExerciseWorkspace(pack,exercise);
   const keyboardConfig=resolveExerciseKeyboard(pack,exercise);
+  const hintSequence=useMemo(()=>createHintSequence(pack,exercise),[pack,exercise]);
   const [rows,setRows]=useState(()=>hydrateDerivationRows(initialRows,workspace));
   const [activeId,setActiveId]=useState(rows[0]?.id??0);
   const [activeField,setActiveField]=useState(null);
   const [feedback,setFeedback]=useState({kind:'editing'});
   const [showCorrection,setShowCorrection]=useState(false);
-  const [usedCorrection,setUsedCorrection]=useState(false);
+  const [fullCorrectionUsed,setFullCorrectionUsed]=useState(false);
+  const [hintCount,setHintCount]=useState(0);
   const [selectionMode,setSelectionMode]=useState(false);
   const [mistakes,setMistakes]=useState(0);
   const [recent,setRecent]=useState(()=>[recentExerciseEntry(initialSeed,exercise)]);
@@ -97,24 +110,32 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
     if(result.kind==='error')setMistakes(value=>value+1);
     if(result.kind==='success'&&!completionRecorded.current){
       completionRecorded.current=true;
-      progressStore.complete(exercise,{mistakes,hints:usedCorrection?1:0,durationMs:Date.now()-startedAt.current});
+      progressStore.complete(exercise,{
+        mistakes,
+        hints:completionHintCost({revealed:hintCount,fullCorrection:fullCorrectionUsed}),
+        durationMs:Date.now()-startedAt.current
+      });
     }
     setFeedback(result);
   };
+  const revealHint=()=>setHintCount(current=>revealHintCount(hintSequence,current));
   const toggleCorrection=()=>{
-    if(!showCorrection)setUsedCorrection(true);
+    if(!showCorrection)setFullCorrectionUsed(true);
     setShowCorrection(value=>!value);
   };
   const next=()=>{
     const choice=selectNextExercise(pack,category,progressStore.load(),{recent,currentPrompt:exercise.promptLatex});
     const nextSeed=choice.seed,candidate=choice.exercise;
     const nextWorkspace=resolveExerciseWorkspace(pack,candidate),id=nextId.current++;
-    setRecent(old=>[...old.slice(-6),recentExerciseEntry(nextSeed,candidate)]);setSeed(nextSeed);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setUsedCorrection(false);setSelectionMode(false);setMistakes(0);
+    setRecent(old=>[...old.slice(-6),recentExerciseEntry(nextSeed,candidate)]);setSeed(nextSeed);setRows([createDerivationRow(id,'',nextWorkspace)]);setActiveId(id);setActiveField(null);setFeedback({kind:'editing'});setShowCorrection(false);setFullCorrectionUsed(false);setHintCount(0);setSelectionMode(false);setMistakes(0);
     startedAt.current=Date.now();completionRecorded.current=false;
   };
   const invalid=feedback.kind==='error'?feedback.row:-1;
   const incomplete=feedback.kind==='incomplete'?feedback.row:-1;
   const success=feedback.kind==='success';
+  const shownHints=visibleHints(hintSequence,hintCount);
+  const canRevealHint=hintCount<hintSequence.length;
+  const canShowCorrection=['error','incomplete','continue'].includes(feedback.kind);
 
   return <main class="practice-screen" data-pack={pack.id}>
     <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{pack.categoryInfo[category].title}</div><div class="header-spacer"/></header>
@@ -124,8 +145,12 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
       {feedback.kind==='error'&&<div class="feedback-message feedback-message--error">{feedback.message}</div>}
       {(feedback.kind==='incomplete'||feedback.kind==='continue')&&<div class="feedback-message feedback-message--neutral">{feedback.message}</div>}
       {success&&<div class="success-panel"><div class="feedback-message feedback-message--success">{pack.ui?.successLabel||'Correct.'}</div><button type="button" class="next-button" onClick={next}>{pack.ui?.nextLabel||'Exercice suivant'}</button></div>}
-      {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={toggleCorrection}>{showCorrection?(pack.ui?.hideCorrectionLabel||'Masquer la correction'):(pack.ui?.showCorrectionLabel||'Voir une correction')}</button>}
+      {!success&&<div class="assist-controls">
+        {hintSequence.length>0&&<button type="button" class="hint-button" disabled={!canRevealHint} onClick={revealHint}>{canRevealHint?(hintCount===0?'Indice':'Indice suivant'):'Tous les indices affichés'}</button>}
+        {canShowCorrection&&<button type="button" class="correction-toggle" onClick={toggleCorrection}>{showCorrection?(pack.ui?.hideCorrectionLabel||'Masquer la correction'):(pack.ui?.showCorrectionLabel||'Voir une correction')}</button>}
+      </div>}
     </div>
+    {!success&&<HintPanel hints={shownHints}/>} 
     {showCorrection&&<Correction exercise={exercise} workspace={workspace} pack={pack}/>} 
     {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation} keyboardConfig={keyboardConfig}/>} 
   </main>;
