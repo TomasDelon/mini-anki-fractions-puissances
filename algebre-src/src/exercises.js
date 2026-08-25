@@ -1,16 +1,16 @@
 import { Rational, Sets } from './math.js';
 
 export const CATEGORY_INFO = {
-  simple: { title:'Équations simples', formula:'x+a=b' },
-  linear: { title:'Équations linéaires', formula:'ax+b=c' },
-  'both-sides': { title:'Inconnue des deux côtés', formula:'ax+b=cx+d' },
-  parentheses: { title:'Parenthèses', formula:'a(x+b)+c=d' },
-  fractions: { title:'Fractions', formula:'\\dfrac{x+b}{a}+c=d' },
-  squares: { title:'Carrés et racines', formula:'x^2=r^2' },
-  'pure-quadratic': { title:'Équations quadratiques particulières', formula:'ax^2+c=0' },
-  'common-factor': { title:'Mise en facteur', formula:'ax^2+bx=0' },
-  identities: { title:'Identités remarquables', formula:'(a\\pm b)^2,\\quad a^2-b^2' },
-  mixed: { title:'Mélange', formula:'\\text{toutes les catégories}' }
+  simple: { title:'Équations simples', formula:'x+a=b', difficulty:1 },
+  linear: { title:'Équations linéaires', formula:'ax+b=c', difficulty:2 },
+  'both-sides': { title:'Inconnue des deux côtés', formula:'ax+b=cx+d', difficulty:3 },
+  parentheses: { title:'Parenthèses', formula:'a(x+b)+c=d', difficulty:3 },
+  fractions: { title:'Fractions', formula:'\\dfrac{x+b}{a}+c=d', difficulty:3 },
+  squares: { title:'Carrés et racines', formula:'x^2=r^2', difficulty:2 },
+  'pure-quadratic': { title:'Équations quadratiques particulières', formula:'ax^2+c=0', difficulty:3 },
+  'common-factor': { title:'Mise en facteur', formula:'ax^2+bx=0', difficulty:3 },
+  identities: { title:'Identités remarquables', formula:'(a\\pm b)^2,\\quad a^2-b^2', difficulty:4 },
+  mixed: { title:'Mélange', formula:'\\text{toutes les catégories}', difficulty:3 }
 };
 export const CATEGORIES = Object.keys(CATEGORY_INFO);
 const BASE_CATEGORIES = CATEGORIES.filter(c=>c!=='mixed');
@@ -127,7 +127,7 @@ export function generateExercise(category, seed) {
   if(category==='mixed'){
     const chosen=new RNG(seed).pick(BASE_CATEGORIES);
     const inner=generateExercise(chosen,(seed^0xa5a5a5a5)>>>0);
-    return {...inner,id:`mixed:${seed}`,category:'mixed',seed};
+    return {...inner,id:`mixed:${seed}`,category:'mixed',sourceCategory:chosen,seed};
   }
   return ({simple,linear,'both-sides':bothSides,parentheses,fractions,squares,'pure-quadratic':pureQuadratic,'common-factor':commonFactor,identities})[category](seed);
 }
