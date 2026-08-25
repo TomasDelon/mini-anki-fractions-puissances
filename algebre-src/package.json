@@ -1,11 +1,15 @@
 {
-  "name": "algebre-3eme",
+  "name": "math-trainer-pwa",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build-pack.mjs equations-3eme dist",
+    "build:e2e": "node scripts/build-pack.mjs equations-3eme dist --allow-switch",
+    "build:pack": "node scripts/build-pack.mjs",
+    "build:all": "node scripts/build-all-packs.mjs",
+    "verify:builds": "node scripts/verify-built-packs.mjs",
     "test": "vitest run tests/*.test.js",
     "test:e2e": "playwright test"
   },
