@@ -9,6 +9,19 @@ function assert(condition,message){
   if(!condition) throw new Error(message);
 }
 
+function allJavaScript(dir){
+  const files=[];
+  const visit=current=>{
+    for(const entry of fs.readdirSync(current,{withFileTypes:true})){
+      const absolute=path.join(current,entry.name);
+      if(entry.isDirectory()) visit(absolute);
+      else if(entry.isFile()&&entry.name.endsWith('.js')) files.push(absolute);
+    }
+  };
+  visit(dir);
+  return files.map(file=>fs.readFileSync(file,'utf8')).join('\n');
+}
+
 for(const id of PACK_BUILD_IDS){
   const pack=getPackBuildConfig(id);
   const dir=path.join(root,pack.slug);
@@ -33,6 +46,14 @@ for(const id of PACK_BUILD_IDS){
   const index=fs.readFileSync(indexPath,'utf8');
   assert(index.includes(`${base}manifest.webmanifest`),`Manifest link does not use ${base} for ${id}`);
   assert(index.includes(base),`Built HTML does not reference its deployment base for ${id}`);
+  assert(index.includes(`<title>${pack.name}</title>`),`Wrong HTML title for ${id}`);
+  assert(index.includes(`apple-mobile-web-app-title\" content=\"${pack.name}`)||index.includes(`apple-mobile-web-app-title" content="${pack.name}`),`Wrong iOS app title for ${id}`);
+  assert(!index.includes('__TRAINER_'),`Unresolved HTML metadata placeholder for ${id}`);
+
+  const javascript=allJavaScript(dir);
+  for(const otherId of PACK_BUILD_IDS){
+    if(otherId!==id) assert(!javascript.includes(otherId),`${id} production bundle still contains ${otherId}`);
+  }
 }
 
 console.log(`Verified ${PACK_BUILD_IDS.length} independent installable trainer PWAs.`);
