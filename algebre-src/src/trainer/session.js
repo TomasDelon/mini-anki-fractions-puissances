@@ -18,6 +18,12 @@ function normalizeAttempt(value){
   };
 }
 
+function normalizeContext(pack,value){
+  if(value?.mode!=='review')return null;
+  const targetSkill=typeof value.targetSkill==='string'&&pack.skills?.[value.targetSkill]?value.targetSkill:null;
+  return targetSkill?{mode:'review',targetSkill}:null;
+}
+
 export function createSessionStore(pack,options={}){
   const maxRows=options.maxRows??20;
   const legacyKeys=Object.freeze([...(options.legacyKeys||[])]);
@@ -38,7 +44,14 @@ export function createSessionStore(pack,options={}){
         const workspace=resolveExerciseWorkspace(pack,exercise);
         const rows=serializeDerivationRows(hydrateDerivationRows(value.rows.slice(0,maxRows),workspace));
         const attempt=normalizeAttempt(value.attempt);
-        return attempt?{category:value.category,seed,rows,attempt}:{category:value.category,seed,rows};
+        const context=normalizeContext(pack,value);
+        return {
+          category:value.category,
+          seed,
+          rows,
+          ...(attempt?{attempt}:{}),
+          ...(context||{})
+        };
       }catch{}
     }
     return null;
@@ -47,8 +60,10 @@ export function createSessionStore(pack,options={}){
   function save(session){
     try{
       const attempt=normalizeAttempt(session?.attempt);
-      const value=attempt?{...session,attempt}:{...session};
+      const context=normalizeContext(pack,session);
+      const value={...session,...(attempt?{attempt}:{}),...(context||{})};
       if(!attempt)delete value.attempt;
+      if(!context){delete value.mode;delete value.targetSkill;}
       getStorage()?.setItem(key,JSON.stringify(value));
       return true;
     }catch{return false;}
