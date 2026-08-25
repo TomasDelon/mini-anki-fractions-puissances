@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,53 +14,49 @@
     <link rel="manifest" href="/mini-anki-fractions-puissances/algebre/manifest.webmanifest">
     <script id="vite-plugin-pwa:register-sw" src="/mini-anki-fractions-puissances/algebre/registerSW.js"></script>
     <style>
-      /* MathLive labels are visual only: the surrounding button owns the click. */
+      /* Decorative MathLive labels never steal pointer events from their key. */
       .keyboard .key-math-label,
-      .keyboard .key math-field {
+      .keyboard .key math-field,
+      .category-formula {
         pointer-events: none !important;
         user-select: none !important;
         -webkit-user-select: none !important;
       }
 
-      /* Keep one deterministic 6-column layout on desktop and iPhone. */
+      /* One deterministic calculator-like layout on desktop and iPhone. */
       .keyboard .key-grid {
         display: grid !important;
         grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
         gap: 6px !important;
       }
-
-      /* Only restyle the main math grid. Do not override the bottom row,
-         especially the dark Enter key. */
       .keyboard .key-grid .key {
         cursor: pointer;
         touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
         background: #fff;
         border-color: #dedfe5;
         box-shadow: 0 1px 1px rgba(20,22,28,.04), 0 2px 7px rgba(20,22,28,.04);
       }
 
-      /* Stable order. CSS order avoids fighting Preact by moving DOM nodes. */
       .key-grid [data-key="7"] { order: 1; }
       .key-grid [data-key="8"] { order: 2; }
       .key-grid [data-key="9"] { order: 3; }
       .key-grid [data-key="plus"] { order: 4; }
       .key-grid [data-key="minus"] { order: 5; }
       .key-grid [data-key="times"] { order: 6; }
-
       .key-grid [data-key="4"] { order: 7; }
       .key-grid [data-key="5"] { order: 8; }
       .key-grid [data-key="6"] { order: 9; }
       .key-grid [data-key="x"] { order: 10; }
       .key-grid [data-key="square"] { order: 11; }
       .key-grid [data-key="equals"] { order: 12; }
-
       .key-grid [data-key="1"] { order: 13; }
       .key-grid [data-key="2"] { order: 14; }
       .key-grid [data-key="3"] { order: 15; }
       .key-grid [data-key="pm"] { order: 16; }
       .key-grid [data-key="parentheses"] { order: 17; }
       .key-grid [data-key="sqrt"] { order: 18; }
-
       .key-grid [data-key="0"] { order: 19; }
       .key-grid [data-key="fraction"] { order: 20; }
       .key-grid [data-key="abs"] { order: 21; }
@@ -68,6 +64,7 @@
       .key-grid [data-key="up"] { order: 23; }
       .key-grid [data-key="down"] { order: 24; }
 
+      /* Visual grouping: structures are subtly accented, operators stay neutral. */
       .keyboard .key[data-key="x"],
       .keyboard .key[data-key="square"],
       .keyboard .key[data-key="parentheses"],
@@ -77,22 +74,23 @@
         background: #faf9ff;
         border-color: #e7e3ff;
       }
-
       .keyboard .key[data-key="times"],
       .keyboard .key[data-key="plus"],
       .keyboard .key[data-key="minus"],
       .keyboard .key[data-key="equals"],
-      .keyboard .key[data-key="pm"] {
-        background: #f8f8fb;
-      }
+      .keyboard .key[data-key="pm"] { background: #f8f8fb; }
 
-      /* The base bundle intentionally gives Enter white text on a dark key.
-         Keep that styling explicit so later overrides cannot make it invisible. */
       .keyboard .key--enter,
       .keyboard [data-key="enter"] {
         background: #29292e !important;
         color: #fff !important;
         border-color: #29292e !important;
+      }
+      .keyboard .key--select[aria-pressed="true"] {
+        background: #efedff !important;
+        border-color: #bcb5f3 !important;
+        color: #5145b7 !important;
+        box-shadow: inset 0 0 0 1px rgba(91,79,199,.12);
       }
 
       .keyboard .key[data-key="fraction"] .key-math-label { font-size: 18px; }
@@ -101,8 +99,49 @@
       .keyboard .key[data-key="x"] .key-math-label { font-size: 25px; }
       .keyboard .key[data-key="or"] .key-math-label { font-size: 17px; }
 
+      /* Long solutions should never focus a row underneath the sticky keyboard. */
+      .math-row math-field { scroll-margin-bottom: 330px; }
+      .math-row math-field:focus {
+        outline: none !important;
+        background: #fbfaff !important;
+        box-shadow: inset 0 0 0 1.5px rgba(91,79,199,.28);
+      }
+      .math-row--invalid math-field {
+        background: #fff0f0 !important;
+        box-shadow: inset 0 0 0 1.5px rgba(201,42,42,.28) !important;
+      }
+
+      /* Once an exercise is correct, remove irrelevant controls and let Next dominate. */
+      .practice-screen:has(.next-button) .verify-button,
+      .practice-screen:has(.next-button) .keyboard { display: none !important; }
+      .practice-screen:has(.next-button) .practice-controls { padding-bottom: 0; }
+      .practice-screen:has(.next-button) .next-button { min-height: 52px; margin-top: 10px; }
+
+      /* Category screen: prose title + real mathematical preview. */
+      .category-button { min-height: 68px; }
+      .category-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        text-align: left;
+      }
+      .category-formula {
+        display: block;
+        min-height: 20px;
+        color: #6c6c75;
+        font-size: 17px;
+        font-weight: 400;
+      }
+
+      @media (hover:hover) {
+        .keyboard .key:hover { filter: brightness(.985); }
+      }
       @media (max-width: 350px) {
         .keyboard .key-grid { gap: 4px !important; }
+        .keyboard .key[data-key="fraction"] .key-math-label { font-size: 15px; }
+        .category-formula { font-size: 15px; }
       }
     </style>
   </head>
@@ -110,6 +149,7 @@
     <div id="app"></div>
     <script>
       (() => {
+        const app = document.getElementById('app');
         const labels = {
           x: 'x',
           times: '\\times',
@@ -121,9 +161,42 @@
           abs: '\\left|\\square\\right|',
           or: '\\text{ ou }'
         };
+        const ariaLabels = {
+          times: 'Multiplier', x: 'x', square: 'Carré', parentheses: 'Parenthèses',
+          fraction: 'Fraction', sqrt: 'Racine carrée', abs: 'Valeur absolue',
+          pm: 'Plus ou moins', or: 'ou', up: 'Monter', down: 'Descendre',
+          left: 'Déplacer à gauche', right: 'Déplacer à droite',
+          backspace: 'Effacer', enter: 'Nouvelle ligne'
+        };
+        const categorySpecs = {
+          'Équations simples': ['Équations simples', 'x+a=b'],
+          'Équations linéaires': ['Équations linéaires', 'ax+b=c'],
+          'Inconnue des deux côtés': ['Inconnue des deux côtés', 'ax+b=cx+d'],
+          'Parenthèses': ['Parenthèses', 'a(x+b)+c=d'],
+          'Fractions': ['Fractions', '\\dfrac{x+b}{a}+c=d'],
+          'Carrés et racines': ['Carrés et racines', 'x^2=r^2'],
+          'Équations ax² + c = 0': ['Équations quadratiques particulières', 'ax^2+c=0'],
+          'Mise en facteur': ['Mise en facteur', 'ax^2+bx=0'],
+          'Identités remarquables': ['Identités remarquables', '(a\\pm b)^2,\\quad a^2-b^2'],
+          'Trinômes factorisables': ['Trinômes factorisables', '(x-r_1)(x-r_2)=0']
+        };
+
+        let activeField = null;
+        let polishScheduled = false;
+
+        function schedulePolish() {
+          if (polishScheduled) return;
+          polishScheduled = true;
+          requestAnimationFrame(() => {
+            polishScheduled = false;
+            applyLabels();
+            enhanceCategories();
+            polishHeader();
+          });
+        }
 
         function applyLabels() {
-          const grid = document.querySelector('.key-grid');
+          const grid = app.querySelector('.key-grid');
           if (!grid) return;
           for (const [key, latex] of Object.entries(labels)) {
             const mf = grid.querySelector(`[data-key="${key}"] math-field`);
@@ -132,26 +205,109 @@
             mf.readOnly = true;
             mf.tabIndex = -1;
           }
+          for (const [key, label] of Object.entries(ariaLabels)) {
+            const button = app.querySelector(`.keyboard [data-key="${key}"]`);
+            if (button) button.setAttribute('aria-label', label);
+          }
+          const select = app.querySelector('.keyboard .key--select');
+          if (select) select.setAttribute('aria-label', 'Mode sélection');
         }
 
-        /* Preact reuses the same MathLive elements when "Exercice suivant"
-           is pressed and can restore the original bundled label values without
-           creating DOM nodes. A one-shot observer therefore misses it. Keep a
-           tiny synchronizer alive for the keyboard's lifetime. */
-        customElements.whenDefined('math-field').then(() => {
-          applyLabels();
-          requestAnimationFrame(applyLabels);
-
-          const app = document.getElementById('app');
-          const observer = new MutationObserver(() => {
-            queueMicrotask(applyLabels);
-            requestAnimationFrame(applyLabels);
+        function enhanceCategories() {
+          app.querySelectorAll('.category-button').forEach(button => {
+            if (button.dataset.mathEnhanced === 'true') return;
+            const label = button.querySelector(':scope > span:first-child');
+            if (!label) return;
+            const spec = categorySpecs[label.textContent.trim()];
+            if (!spec) return;
+            label.textContent = spec[0];
+            label.classList.add('category-copy');
+            const math = document.createElement('math-span');
+            math.className = 'category-formula';
+            math.setAttribute('aria-hidden', 'true');
+            math.textContent = spec[1];
+            label.appendChild(math);
+            button.dataset.mathEnhanced = 'true';
           });
-          observer.observe(app, { childList: true, subtree: true });
+        }
 
-          setInterval(() => {
-            if (!document.hidden) applyLabels();
-          }, 100);
+        function polishHeader() {
+          const heading = app.querySelector('.practice-category');
+          if (heading && heading.textContent.trim() === 'Équations ax² + c = 0') {
+            heading.textContent = 'Équations quadratiques particulières';
+          }
+        }
+
+        function editableField(node) {
+          return node && node.tagName === 'MATH-FIELD' && !node.hasAttribute('read-only') && node.closest('.math-row');
+        }
+        function getField() {
+          if (activeField && activeField.isConnected) return activeField;
+          if (editableField(document.activeElement)) return document.activeElement;
+          const fields = app.querySelectorAll('.math-row math-field:not([read-only])');
+          return fields.length ? fields[fields.length - 1] : null;
+        }
+        function selectionMode() {
+          return app.querySelector('.key--select[aria-pressed="true"]');
+        }
+        function turnSelectionOff() {
+          const button = selectionMode();
+          if (button) button.click();
+        }
+
+        app.addEventListener('focusin', event => {
+          if (editableField(event.target)) activeField = event.target;
+        });
+        app.addEventListener('pointerdown', event => {
+          const field = event.target.closest?.('.math-row math-field');
+          if (editableField(field)) activeField = field;
+        }, true);
+
+        /* Fix two MathLive ergonomics at the integration layer:
+           - selection arrows use MathLive's actual selection commands;
+           - square is postfix: x then ² produces x², while a selection is wrapped. */
+        app.addEventListener('click', event => {
+          const button = event.target.closest?.('.keyboard button');
+          if (!button) { schedulePolish(); return; }
+          const key = button.dataset.key;
+          const field = getField();
+
+          if (field && selectionMode() && (key === 'left' || key === 'right')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            field.executeCommand(key === 'left' ? 'extendSelectionBackward' : 'extendSelectionForward');
+            field.focus();
+            schedulePolish();
+            return;
+          }
+
+          if (field && key === 'square') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const hasSelection = !field.selectionIsCollapsed;
+            field.insert(hasSelection ? '{#0}^{2}' : '#@^{2}', {
+              insertionMode: 'replaceSelection',
+              selectionMode: 'after',
+              mode: 'math',
+              format: 'latex',
+              focus: true
+            });
+            field.mode = 'math';
+            field.focus();
+            turnSelectionOff();
+            schedulePolish();
+            return;
+          }
+
+          schedulePolish();
+        }, true);
+
+        customElements.whenDefined('math-field').then(() => {
+          schedulePolish();
+          const observer = new MutationObserver(schedulePolish);
+          observer.observe(app, { childList: true, subtree: true, characterData: true });
+          window.addEventListener('pageshow', schedulePolish);
+          document.addEventListener('visibilitychange', () => { if (!document.hidden) schedulePolish(); });
         });
       })();
     </script>
