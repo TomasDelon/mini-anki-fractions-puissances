@@ -1,6 +1,7 @@
 import { resolveExerciseDifficulty, resolveExerciseSkills } from './pack.js';
 
 export const PROGRESS_VERSION=1;
+export const RECENT_EXERCISE_LIMIT=24;
 
 const clamp01=value=>Math.max(0,Math.min(1,value));
 
@@ -19,7 +20,7 @@ export function progressStorageKey(pack){
 export function createEmptyProgress(pack){
   const skills={};
   for(const id of Object.keys(pack.skills||{})) skills[id]=emptySkill();
-  return {version:PROGRESS_VERSION,completed:0,skills,categories:{}};
+  return {version:PROGRESS_VERSION,completed:0,skills,categories:{},recentExercises:[]};
 }
 
 export function qualityFromCompletion({mistakes=0,hints=0}={}){
@@ -49,6 +50,23 @@ function normalizeCategory(value){
   };
 }
 
+function normalizeRecentExercise(pack,value){
+  if(!value||typeof value!=='object')return null;
+  const sourceCategory=typeof value.sourceCategory==='string'&&pack.categories.includes(value.sourceCategory)?value.sourceCategory:null;
+  if(!sourceCategory||typeof value.promptLatex!=='string'||!value.promptLatex.trim())return null;
+  const skills=Array.isArray(value.skills)?[...new Set(value.skills.filter(id=>pack.skills[id]))]:[];
+  return {
+    seed:Number.isFinite(value.seed)?value.seed>>>0:null,
+    sourceCategory,
+    promptLatex:value.promptLatex,
+    skills,
+    mistakes:Math.max(0,Math.floor(finiteNumber(value.mistakes))),
+    hints:Math.max(0,Math.floor(finiteNumber(value.hints))),
+    durationMs:Math.max(0,finiteNumber(value.durationMs)),
+    completedAt:typeof value.completedAt==='string'?value.completedAt:null
+  };
+}
+
 export function normalizeProgress(pack,value){
   const empty=createEmptyProgress(pack);
   if(!value||typeof value!=='object') return empty;
@@ -58,11 +76,16 @@ export function normalizeProgress(pack,value){
   for(const category of pack.categories){
     if(value.categories?.[category]) categories[category]=normalizeCategory(value.categories[category]);
   }
+  const recentExercises=(Array.isArray(value.recentExercises)?value.recentExercises:[])
+    .map(item=>normalizeRecentExercise(pack,item))
+    .filter(Boolean)
+    .slice(-RECENT_EXERCISE_LIMIT);
   return {
     version:PROGRESS_VERSION,
     completed:Math.max(0,Math.floor(finiteNumber(value.completed))),
     skills,
-    categories
+    categories,
+    recentExercises
   };
 }
 
@@ -100,12 +123,24 @@ export function recordCompletion(pack,progress,exercise,attempt={},now=new Date(
     totalDurationMs:previousCategory.totalDurationMs+durationMs,
     lastSeen:seenAt
   }};
+  const recentEntry={
+    seed:Number.isFinite(exercise.seed)?exercise.seed>>>0:null,
+    sourceCategory:category,
+    promptLatex:exercise.promptLatex,
+    skills:[...skills],
+    mistakes,
+    hints,
+    durationMs,
+    completedAt:seenAt
+  };
+  const recentExercises=[...current.recentExercises,recentEntry].slice(-RECENT_EXERCISE_LIMIT);
 
   return {
     version:PROGRESS_VERSION,
     completed:current.completed+1,
     skills:nextSkills,
-    categories
+    categories,
+    recentExercises
   };
 }
 
