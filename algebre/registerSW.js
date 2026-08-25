@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/mini-anki-fractions-puissances/algebre/sw.js', { scope: '/mini-anki-fractions-puissances/algebre/' })})}
