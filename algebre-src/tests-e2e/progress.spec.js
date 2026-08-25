@@ -41,7 +41,7 @@ test('a completed exercise updates persistent skill progress and the home screen
   await expect(page.getByRole('button',{name:/Reprendre/})).toHaveCount(0);
 });
 
-test('an overdue learned skill opens a focused review session and persists its target',async({page})=>{
+test('an overdue learned skill opens and finishes a focused review session',async({page})=>{
   await page.addInitScript(key=>{
     localStorage.setItem(key,JSON.stringify({
       version:1,
@@ -67,6 +67,13 @@ test('an overdue learned skill opens a focused review session and persists its t
 
   const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth}));
   expect(dims.scroll).toBeLessThanOrEqual(dims.inner);
+
+  await solveCurrentSimpleExercise(page);
+  await expect(page.getByRole('button',{name:'Terminer la révision'})).toBeVisible();
+  expect(await page.evaluate(key=>localStorage.getItem(key),SESSION_KEY)).toBeNull();
+  await page.getByRole('button',{name:'Terminer la révision'}).click();
+  await expect(page.locator('.home-screen')).toBeVisible();
+  await expect(page.getByRole('button',{name:/Reprendre/})).toHaveCount(0);
 });
 
 test('progressive hints reveal strategy before mathematics and count as assistance',async({page})=>{
