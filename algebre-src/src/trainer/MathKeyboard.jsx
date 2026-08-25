@@ -35,6 +35,7 @@ export function MathKeyboard({
   const profile=getKeyboardProfile(keyboardConfig.profile);
   const desktop=useDesktopInput();
   const displayMode=forceDisplayMode||resolveKeyboardDisplayMode(keyboardConfig,desktop);
+  const extraKeys=keyboardConfig.extraKeys||[];
 
   const insert=(latex,opts={})=>{
     if(!field)return;
@@ -84,14 +85,17 @@ export function MathKeyboard({
     const definition=getKeyDefinition(id),active=id==='select'&&selectionMode;
     return <Key key={id} dataKey={definition.id} label={definition.label} math={definition.math} ariaLabel={definition.ariaLabel} className={`${definition.className||''} ${active?'key--active':''}`} onClick={()=>runAction(definition)}/>;
   };
+  const extraRow=extraKeys.length?<div class="key-extra-row" aria-label="Relations disponibles">{extraKeys.map(renderKey)}</div>:null;
 
   if(displayMode==='compact'){
     return <div class="keyboard keyboard--compact" aria-label="Outils mathématiques" data-profile={profile.id} data-display-mode="compact">
+      {extraRow}
       <div class="key-compact-row">{profile.compact.map(renderKey)}</div>
     </div>;
   }
 
   return <div class="keyboard keyboard--full" aria-label="Clavier mathématique" data-profile={profile.id} data-display-mode="full">
+    {extraRow}
     <div class="key-grid">{profile.grid.map(renderKey)}</div>
     <div class="key-bottom-row">{profile.bottom.map(renderKey)}</div>
   </div>;
