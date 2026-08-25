@@ -9,12 +9,13 @@ function normalizeLatex(latex){
     .replace(/−/g,'-')
     .replace(/\\left|\\right/g,'')
     .replace(/\\dfrac/g,'\\frac')
+    .replace(/\\div/g,'/')
     .replace(/\s+/g,'');
 }
 
 export function analyzeRational(latex){
   if(hasPlaceholder(latex))return {kind:'incomplete',message:'Expression incomplète.'};
-  const result=analyzeExpression(latex);
+  const result=analyzeExpression(normalizeLatex(latex));
   if(result.kind!=='ok')return result;
   if(result.polynomial.length!==1)return {kind:'unsupported',message:'Une valeur numérique est attendue.'};
   const value=result.polynomial[0];
