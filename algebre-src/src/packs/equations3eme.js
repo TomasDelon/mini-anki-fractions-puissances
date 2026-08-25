@@ -51,3 +51,5 @@ export const EQUATIONS_3EME_PACK = defineTrainerPack({
     ])
   })
 });
+
+export default EQUATIONS_3EME_PACK;
