@@ -14,6 +14,7 @@ export const KEY_LIBRARY = Object.freeze({
   plus:key('plus','+',{type:'insert',latex:'+'},{ariaLabel:'Plus'}),
   minus:key('minus','-',{type:'insert',latex:'-'},{ariaLabel:'Moins'}),
   times:key('times','\\times',{type:'insert',latex:'\\times'},{ariaLabel:'Multiplier'}),
+  divide:key('divide','\\div',{type:'insert',latex:'\\div'},{ariaLabel:'Diviser'}),
   equals:key('equals','=',{type:'insert',latex:'='},{ariaLabel:'Égal'}),
   x:key('x','x',{type:'insert',latex:'x'},{ariaLabel:'x'}),
   square:key('square','{}^{2}',{type:'square'},{ariaLabel:'Carré'}),
@@ -47,6 +48,12 @@ export const KEYBOARD_PROFILES = Object.freeze({
     grid:Object.freeze(['7','8','9','plus','minus','times','4','5','6','x','square','parentheses','1','2','3','0','fraction','up']),
     bottom:Object.freeze(['select','left','right','down','backspace','enter']),
     compact:Object.freeze(['square','parentheses','fraction'])
+  }),
+  fractions:Object.freeze({
+    id:'fractions',
+    grid:Object.freeze(['7','8','9','plus','minus','times','4','5','6','divide','fraction','parentheses','1','2','3','0','up','down']),
+    bottom:Object.freeze(['select','left','right','backspace','enter']),
+    compact:Object.freeze(['fraction','times','divide','plus','minus','parentheses'])
   }),
   'derivation-relations':Object.freeze({
     id:'derivation-relations',
