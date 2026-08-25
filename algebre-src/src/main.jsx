@@ -15,6 +15,7 @@ import {
 import { DerivationEditor, RelationMark } from './trainer/DerivationEditor.jsx';
 import { MathKeyboard } from './trainer/MathKeyboard.jsx';
 import { StaticMath, configureMathField } from './trainer/MathView.jsx';
+import { createSessionStore } from './trainer/session.js';
 
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
@@ -23,30 +24,14 @@ const PACK=resolveTrainerPack(location.search);
 const CATEGORIES=PACK.categories;
 const CATEGORY_INFO=PACK.categoryInfo;
 const WORKSPACE=PACK.workspace;
-const STORAGE_KEY=`math-trainer-${PACK.id}-session-v${PACK.version}`;
-const LEGACY_STORAGE_KEYS=PACK.id==='equations-3eme'?['algebre-3eme-session-v3','algebre-3eme-session-v2']:[];
 const MAX_ROWS=20;
-
-function loadSession(){
-  for(const key of [STORAGE_KEY,...LEGACY_STORAGE_KEYS]){
-    try{
-      const x=JSON.parse(localStorage.getItem(key));
-      if(!x||!CATEGORIES.includes(x.category)||!Number.isFinite(x.seed)||!Array.isArray(x.rows)||!x.rows.length) continue;
-      const rows=serializeDerivationRows(hydrateDerivationRows(x.rows.slice(0,MAX_ROWS),WORKSPACE));
-      return {category:x.category,seed:x.seed>>>0,rows};
-    }catch{}
-  }
-  return null;
-}
-function saveSession(s){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch{} }
-function clearSession(){
-  for(const key of [STORAGE_KEY,...LEGACY_STORAGE_KEYS]){
-    try{localStorage.removeItem(key);}catch{}
-  }
-}
+const SESSION_STORE=createSessionStore(PACK,{
+  maxRows:MAX_ROWS,
+  legacyKeys:PACK.id==='equations-3eme'?['algebre-3eme-session-v3','algebre-3eme-session-v2']:[]
+});
 
 function Home({onChoose,onResume}){
-  const saved=loadSession();
+  const saved=SESSION_STORE.load();
   return <main class="home-screen" data-pack={PACK.id}>
     <header class="home-header"><h1>{PACK.title}</h1><p>Choisis ce que tu veux pratiquer.</p></header>
     {saved&&<button class="resume-card" type="button" onClick={onResume}><span>Reprendre</span><strong>{CATEGORY_INFO[saved.category].title}</strong></button>}
@@ -79,7 +64,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const fields=useRef(new Map());
   const exercise=useMemo(()=>PACK.generateExercise(category,seed),[category,seed]);
 
-  useEffect(()=>saveSession({category,seed,rows:serializeDerivationRows(rows)}),[category,seed,rows]);
+  useEffect(()=>SESSION_STORE.save({category,seed,rows:serializeDerivationRows(rows)}),[category,seed,rows]);
   useEffect(()=>{requestAnimationFrame(()=>{const mf=fields.current.get(activeId);if(mf){setActiveField(mf);if(!mf.hasFocus())mf.focus();}});},[seed]);
 
   const register=(id,mf)=>{
@@ -154,7 +139,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
 function App(){
   const [screen,setScreen]=useState({kind:'home'});
   if(screen.kind==='practice') return <Practice category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
-  return <Home onChoose={category=>{clearSession();setScreen({kind:'practice',category,seed:PACK.nextSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=loadSession();if(s)setScreen({kind:'practice',...s});}}/>;
+  return <Home onChoose={category=>{SESSION_STORE.clear();setScreen({kind:'practice',category,seed:PACK.nextSeed(),rows:[{value:'',relationBefore:WORKSPACE.defaultRelation}]});}} onResume={()=>{const s=SESSION_STORE.load();if(s)setScreen({kind:'practice',...s});}}/>;
 }
 
 render(<App/>,document.getElementById('app'));
