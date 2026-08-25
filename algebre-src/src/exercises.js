@@ -10,7 +10,6 @@ export const CATEGORY_INFO = {
   'pure-quadratic': { title:'Équations quadratiques particulières', formula:'ax^2+c=0' },
   'common-factor': { title:'Mise en facteur', formula:'ax^2+bx=0' },
   identities: { title:'Identités remarquables', formula:'(a\\pm b)^2,\\quad a^2-b^2' },
-  factorable: { title:'Trinômes factorisables', formula:'(x-r_1)(x-r_2)=0' },
   mixed: { title:'Mélange', formula:'\\text{toutes les catégories}' }
 };
 export const CATEGORIES = Object.keys(CATEGORY_INFO);
@@ -87,27 +86,48 @@ function commonFactor(seed) {
     clean(`x(${xTerm(a)}${signed(b)})=0`),or('x=0',clean(`${xTerm(a)}${signed(b)}=0`)),or('x=0',`x=${r}`)
   ]);
 }
+
+// Scope 3ème: every generated quadratic with all three coefficients non-zero
+// comes exclusively from a remarkable identity. We never generate a generic
+// ax²+bx+c=0 that would require a discriminant or guessing/finding roots.
 function identities(seed) {
   const g=new RNG(seed), kind=g.int(0,2);
-  if(kind===0){ let r=g.int(-9,9); while(r===0)r=g.int(-9,9); const b=-2*r, c=r*r; return ex('identities',seed,clean(`x^2${coeffTerm(b,'x')}${signed(c)}=0`),finiteInts(r),[`(x${r>0?'-':'+'}${Math.abs(r)})^2=0`,`x=${r}`]); }
-  if(kind===1){ const r=g.int(2,12); return ex('identities',seed,`x^2-${r*r}=0`,finiteInts(-r,r),[`(x-${r})(x+${r})=0`,or(`x=-${r}`,`x=${r}`)]); }
+
+  // (x-r)^2 = x^2 - 2rx + r^2
+  if(kind===0){
+    let r=g.int(-9,9); while(r===0)r=g.int(-9,9);
+    const b=-2*r, c=r*r;
+    return ex('identities',seed,clean(`x^2${coeffTerm(b,'x')}${signed(c)}=0`),finiteInts(r),[
+      `(x${r>0?'-':'+'}${Math.abs(r)})^2=0`,`x=${r}`
+    ]);
+  }
+
+  // x^2-r^2 = (x-r)(x+r): here b=0, kept as the third remarkable identity.
+  if(kind===1){
+    const r=g.int(2,12);
+    return ex('identities',seed,`x^2-${r*r}=0`,finiteInts(-r,r),[
+      `(x-${r})(x+${r})=0`,or(`x=-${r}`,`x=${r}`)
+    ]);
+  }
+
+  // (x+a)^2-b^2 = [(x+a)-b][(x+a)+b].
+  // Expanded, this gives x^2 + 2ax + (a^2-b^2)=0 with all coefficients non-zero.
   let a=g.int(-7,7); const b=g.int(2,9); while(a===0||Math.abs(a)===b)a=g.int(-7,7);
   const lin=2*a, constant=a*a-b*b, r1=-a-b, r2=-a+b;
   return ex('identities',seed,clean(`x^2${coeffTerm(lin,'x')}${signed(constant)}=0`),finiteInts(r1,r2),[
-    clean(`(${fmtBinomial(a)})^2-${b*b}=0`),clean(`(${fmtBinomial(a-b)})(${fmtBinomial(a+b)})=0`),or(`x=${r1}`,`x=${r2}`)
+    clean(`(${fmtBinomial(a)})^2-${b*b}=0`),
+    clean(`(${fmtBinomial(a-b)})(${fmtBinomial(a+b)})=0`),
+    or(`x=${r1}`,`x=${r2}`)
   ]);
 }
-function factorable(seed) {
-  const g=new RNG(seed); let r1=g.int(-9,9),r2=g.int(-9,9);
-  while(r1===0||r2===0||r1===r2||r1===-r2){r1=g.int(-9,9);r2=g.int(-9,9);}
-  const b=-(r1+r2), c=r1*r2;
-  return ex('factorable',seed,clean(`x^2${coeffTerm(b,'x')}${signed(c)}=0`),finiteInts(r1,r2),[
-    clean(`(${fmtBinomial(-r1)})(${fmtBinomial(-r2)})=0`),or(`x=${r1}`,`x=${r2}`)
-  ]);
-}
+
 function ex(category,seed,promptLatex,expected,correctionLatex){ return {id:`${category}:${seed}`,category,seed,promptLatex,expected,correctionLatex}; }
 
 export function generateExercise(category, seed) {
-  if(category==='mixed'){ const chosen=new RNG(seed).pick(BASE_CATEGORIES); const inner=generateExercise(chosen,(seed^0xa5a5a5a5)>>>0); return {...inner,id:`mixed:${seed}`,category:'mixed',seed}; }
-  return ({simple,linear,'both-sides':bothSides,parentheses,fractions,squares,'pure-quadratic':pureQuadratic,'common-factor':commonFactor,identities,factorable})[category](seed);
+  if(category==='mixed'){
+    const chosen=new RNG(seed).pick(BASE_CATEGORIES);
+    const inner=generateExercise(chosen,(seed^0xa5a5a5a5)>>>0);
+    return {...inner,id:`mixed:${seed}`,category:'mixed',seed};
+  }
+  return ({simple,linear,'both-sides':bothSides,parentheses,fractions,squares,'pure-quadratic':pureQuadratic,'common-factor':commonFactor,identities})[category](seed);
 }
