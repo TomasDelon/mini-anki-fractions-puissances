@@ -121,6 +121,7 @@ function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initial
         hints:completionHintCost({revealed:hintCount,fullCorrection:fullCorrectionUsed}),
         durationMs:Date.now()-startedAt.current
       });
+      sessionStore.clear();
     }
     setFeedback(result);
   };
