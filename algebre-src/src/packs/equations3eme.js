@@ -24,6 +24,9 @@ export const EQUATIONS_3EME_PACK = defineTrainerPack({
     mobileMode:'full',
     desktopMode:'full'
   }),
+  session:Object.freeze({
+    legacyKeys:Object.freeze(['algebre-3eme-session-v3','algebre-3eme-session-v2'])
+  }),
   generateExercise,
   nextSeed:randomSeed,
   validateExercise(exercise,rows){
