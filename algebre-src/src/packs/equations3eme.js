@@ -11,14 +11,40 @@ const WORKSPACE=createWorkspace({
 });
 
 const SKILLS=Object.freeze({
-  'equation-isolation':{title:'Isoler l’inconnue'},
-  'unknown-both-sides':{title:'Inconnue des deux côtés',prerequisites:['equation-isolation']},
-  distributivity:{title:'Développer une expression'},
-  'constant-fractions':{title:'Équations avec fractions constantes',prerequisites:['equation-isolation']},
-  'square-root':{title:'Carré et racine carrée'},
-  'common-factor':{title:'Mettre en facteur'},
-  'zero-product':{title:'Produit nul'},
-  'remarkable-identities':{title:'Identités remarquables'}
+  'equation-isolation':{
+    title:'Isoler l’inconnue',
+    hint:'Effectue la même opération des deux côtés pour isoler x.'
+  },
+  'unknown-both-sides':{
+    title:'Inconnue des deux côtés',
+    hint:'Regroupe d’abord tous les termes en x d’un même côté.',
+    prerequisites:['equation-isolation']
+  },
+  distributivity:{
+    title:'Développer une expression',
+    hint:'Développe les parenthèses avant d’isoler x.'
+  },
+  'constant-fractions':{
+    title:'Équations avec fractions constantes',
+    hint:'Élimine le dénominateur en multipliant les deux membres par la même constante.',
+    prerequisites:['equation-isolation']
+  },
+  'square-root':{
+    title:'Carré et racine carrée',
+    hint:'Isole d’abord le carré, puis pense aux deux signes lorsque deux racines réelles sont possibles.'
+  },
+  'common-factor':{
+    title:'Mettre en facteur',
+    hint:'Cherche le facteur commun x avant de résoudre.'
+  },
+  'zero-product':{
+    title:'Produit nul',
+    hint:'Quand un produit vaut zéro, annule chaque facteur séparément.'
+  },
+  'remarkable-identities':{
+    title:'Identités remarquables',
+    hint:'Reconnais l’identité remarquable avant de résoudre l’équation.'
+  }
 });
 
 const CATEGORY_SKILLS=Object.freeze({
