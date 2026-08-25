@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: deploy-algebre
+  cancel-in-progress: true
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -32,19 +36,24 @@ jobs:
         if: steps.payload.outputs.present == 'true'
         shell: bash
         run: |
-          cat deploy/algebre-src.b64.part* | base64 --decode > /tmp/algebre-infinite.zip
+          cat deploy/algebre-src.b64.part* | base64 --decode > /tmp/algebre-src.tar.xz
           mkdir -p /tmp/algebre-src
-          unzip -q /tmp/algebre-infinite.zip -d /tmp/algebre-src
+          tar -xJf /tmp/algebre-src.tar.xz -C /tmp/algebre-src
 
       - name: Install dependencies
         if: steps.payload.outputs.present == 'true'
         working-directory: /tmp/algebre-src
         run: npm install --no-audit --no-fund
 
+      - name: Typecheck
+        if: steps.payload.outputs.present == 'true'
+        working-directory: /tmp/algebre-src
+        run: npm run typecheck
+
       - name: Build for GitHub Pages subpath
         if: steps.payload.outputs.present == 'true'
         working-directory: /tmp/algebre-src
-        run: npm run typecheck && npx vite build --base=/mini-anki-fractions-puissances/algebre/
+        run: npx vite build --base=/mini-anki-fractions-puissances/algebre/
 
       - name: Publish static build
         if: steps.payload.outputs.present == 'true'
