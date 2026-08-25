@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const PROGRESS_KEY='math-trainer-equations-3eme-progress-v1';
+const SESSION_KEY='math-trainer-equations-3eme-session-v2';
 
 async function setLastField(page,value){
   await page.locator('.math-row math-field').last().evaluate((field,latex)=>{
@@ -53,6 +54,23 @@ test('progressive hints reveal strategy before mathematics and count as assistan
   const progress=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),PROGRESS_KEY);
   expect(progress.completed).toBe(1);
   expect(progress.skills['equation-isolation'].mastery).toBeLessThan(.9);
+});
+
+test('hint usage survives reload and resume without resetting assistance',async({page})=>{
+  await page.goto('./');
+  await page.getByRole('button',{name:/Équations simples/}).click();
+  await page.getByRole('button',{name:'Indice',exact:true}).click();
+  await page.getByRole('button',{name:'Indice suivant',exact:true}).click();
+  await expect(page.locator('.hint-item')).toHaveCount(2);
+
+  const stored=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),SESSION_KEY);
+  expect(stored.attempt.hintCount).toBe(2);
+  expect(stored.attempt.startedAt).toBeGreaterThan(0);
+
+  await page.reload();
+  await page.getByRole('button',{name:/Reprendre/}).click();
+  await expect(page.locator('.hint-item')).toHaveCount(2);
+  await expect(page.getByRole('button',{name:/Indice/})).toBeVisible();
 });
 
 test('progress indicators stay compact at 320px',async({page})=>{
