@@ -12,16 +12,18 @@ export function RelationMark({relation,workspace,hidden=false,onChange}){
   return <span class="equiv relation-mark" aria-label={info.aria}>{info.symbol}</span>;
 }
 
-function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,onUndo,onRedo,register}){
+function MathRow({row,index,workspace,isInvalid,isIncomplete,readOnly,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,onUndo,onRedo,register}){
   const ref=useRef(null);
   useEffect(()=>{
     const mf=ref.current; if(!mf)return;
-    configureMathField(mf); register(row.id,mf);
+    configureMathField(mf);mf.readOnly=Boolean(readOnly);register(row.id,mf);
     if(mf.value!==row.value) mf.value=row.value;
     return()=>register(row.id,null);
   },[row.id]);
   useEffect(()=>{const mf=ref.current;if(mf&&mf.value!==row.value)mf.value=row.value;},[row.value]);
+  useEffect(()=>{const mf=ref.current;if(mf)mf.readOnly=Boolean(readOnly);},[readOnly]);
   const keydown=e=>{
+    if(readOnly)return;
     const primary=(e.ctrlKey||e.metaKey)&&!e.altKey;
     const key=e.key.toLowerCase();
     if(primary&&key==='z'){
@@ -36,8 +38,8 @@ function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onD
     if(e.key==='Backspace'&&e.currentTarget.value.trim()===''&&onDeleteEmpty(row.id)){e.preventDefault();e.stopPropagation();}
   };
   return <div class={`math-row derivation-row derivation-row--${workspace.layout} ${isInvalid?'math-row--invalid':''} ${isIncomplete?'math-row--incomplete':''}`}>
-    <RelationMark relation={row.relationBefore} workspace={workspace} onChange={()=>onRelationChange(row.id)}/>
-    <math-field ref={ref} aria-label={`Étape ${index+1}`} onInput={e=>onValue(row.id,e.currentTarget.value)} onFocus={e=>onFocus(row.id,e.currentTarget)} onPointerDown={onDirectPointer} onKeyDown={keydown}/>
+    <RelationMark relation={row.relationBefore} workspace={workspace} onChange={readOnly?undefined:()=>onRelationChange(row.id)}/>
+    <math-field ref={ref} aria-label={`Étape ${index+1}`} onInput={e=>{if(!readOnly)onValue(row.id,e.currentTarget.value);}} onFocus={e=>onFocus(row.id,e.currentTarget)} onPointerDown={onDirectPointer} onKeyDown={keydown}/>
     <span class="row-mark" aria-label={isInvalid?'Erreur':undefined}>{isInvalid?'×':''}</span>
   </div>;
 }
@@ -57,6 +59,7 @@ export function DerivationEditor({
   workspace,
   invalidRow=-1,
   incompleteRow=-1,
+  readOnly=false,
   onValue,
   onFocus,
   onDirectPointer,
@@ -77,6 +80,7 @@ export function DerivationEditor({
         workspace={workspace}
         isInvalid={index===invalidRow}
         isIncomplete={index===incompleteRow}
+        readOnly={readOnly}
         onValue={onValue}
         onFocus={onFocus}
         onDirectPointer={onDirectPointer}
