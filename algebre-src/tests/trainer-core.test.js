@@ -7,6 +7,7 @@ import {
   serializeDerivationRows,
   validateDerivation
 } from '../src/trainer/core.js';
+import { getKeyDefinition, getKeyboardProfile, validateKeyboardProfile } from '../src/trainer/keyboardProfiles.js';
 import { EQUATIONS_3EME_PACK } from '../src/packs/equations3eme.js';
 
 describe('generic derivation relation model',()=>{
@@ -61,6 +62,23 @@ describe('generic derivation relation model',()=>{
     expect(validateDerivation('P',hydrateDerivationRows(['Q'],iff),iff,validators).kind).toBe('iff');
     expect(validateDerivation('A',hydrateDerivationRows(['B'],eq),eq,validators).kind).toBe('equals');
     expect(validateDerivation('P',hydrateDerivationRows(['Q'],implication),implication,validators).kind).toBe('implies');
+  });
+});
+
+describe('declarative keyboard profiles',()=>{
+  test('the 3eme pack points to a valid reusable profile',()=>{
+    const profile=getKeyboardProfile(EQUATIONS_3EME_PACK.keyboard.profile);
+    expect(validateKeyboardProfile(profile)).toBe(true);
+    expect(profile.grid).toContain('fraction');
+    expect(profile.grid).toContain('sqrt');
+    expect(profile.bottom).toEqual(['select','left','right','backspace','enter']);
+  });
+
+  test('relation keys already exist for future =, iff and implication workspaces',()=>{
+    expect(getKeyDefinition('relationEquals').action.relation).toBe('equals');
+    expect(getKeyDefinition('relationIff').action.relation).toBe('iff');
+    expect(getKeyDefinition('relationImplies').action.relation).toBe('implies');
+    expect(validateKeyboardProfile(getKeyboardProfile('derivation-relations'))).toBe(true);
   });
 });
 
