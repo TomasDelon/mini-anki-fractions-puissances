@@ -76,21 +76,18 @@ export function cycleRelation(current,workspace) {
   return allowed[(index+1)%allowed.length];
 }
 
-// Validation is routed by relation semantics. The current 3ème pack only uses
-// ⇔, but the runtime is already ready for packs that use = or ⇒ later.
+// Validation is routed by relation semantics. Keep empty rows in place so a
+// validator can report the exact visual row that needs attention.
 export function validateDerivation(promptLatex,rows,workspace,validators) {
-  const nonEmpty=rows.filter(row=>String(row.value ?? '').trim()!=='');
-  if(nonEmpty.length===0) return validators.empty ? validators.empty() : {kind:'incomplete',row:0,message:'Écris au moins une étape.'};
-
-  const relations=nonEmpty.map(row=>normalizeRelation(row.relationBefore,workspace));
-  const values=nonEmpty.map(row=>row.value);
-  const only=relations[0];
+  const relations=rows.map(row=>normalizeRelation(row.relationBefore,workspace));
+  const values=rows.map(row=>String(row.value ?? ''));
+  const only=relations[0] || workspace.defaultRelation;
   const homogeneous=relations.every(relation=>relation===only);
 
   if(homogeneous && only==='iff' && validators.iffChain) return validators.iffChain(promptLatex,values);
   if(homogeneous && only==='equals' && validators.equalsChain) return validators.equalsChain(promptLatex,values);
   if(homogeneous && only==='implies' && validators.impliesChain) return validators.impliesChain(promptLatex,values);
 
-  if(validators.mixed) return validators.mixed(promptLatex,nonEmpty,workspace);
+  if(validators.mixed) return validators.mixed(promptLatex,rows,workspace);
   return {kind:'error',row:0,message:'Ce type de relation n’est pas encore validé pour cet entraînement.'};
 }
