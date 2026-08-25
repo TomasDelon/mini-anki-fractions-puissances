@@ -10,9 +10,7 @@ async function setLastField(page,value){
   },value);
 }
 
-test('a completed exercise updates persistent skill progress and the home screen shows it',async({page})=>{
-  await page.goto('./');
-  await page.getByRole('button',{name:/Équations simples/}).click();
+async function solveCurrentSimpleExercise(page){
   const prompt=await page.locator('.prompt-math').evaluate(node=>node.textContent.trim().replace(/^\\displaystyle\s*/,''));
   const answer=await page.evaluate(latex=>{
     const result=window.__ALGEBRE_TEST__.analyze(latex);
@@ -22,6 +20,12 @@ test('a completed exercise updates persistent skill progress and the home screen
   await setLastField(page,`x=${answer}`);
   await page.getByRole('button',{name:'Vérifier'}).click();
   await expect(page.getByText('Correct.')).toBeVisible();
+}
+
+test('a completed exercise updates persistent skill progress and the home screen shows it',async({page})=>{
+  await page.goto('./');
+  await page.getByRole('button',{name:/Équations simples/}).click();
+  await solveCurrentSimpleExercise(page);
 
   const progress=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),PROGRESS_KEY);
   expect(progress.completed).toBe(1);
@@ -31,6 +35,24 @@ test('a completed exercise updates persistent skill progress and the home screen
   const simple=page.getByRole('button',{name:/Équations simples/});
   await expect(simple.locator('.category-progress')).toBeVisible();
   await expect(simple.locator('.category-progress')).toHaveAttribute('aria-label',/Progression estimée/);
+});
+
+test('progressive hints reveal strategy before mathematics and count as assistance',async({page})=>{
+  await page.goto('./');
+  await page.getByRole('button',{name:/Équations simples/}).click();
+
+  await page.getByRole('button',{name:'Indice',exact:true}).click();
+  await expect(page.locator('.hint-item--text')).toHaveCount(1);
+  await expect(page.locator('.hint-item--text')).toContainText(/même opération/i);
+  await expect(page.locator('.hint-item--math')).toHaveCount(0);
+
+  await page.getByRole('button',{name:'Indice suivant',exact:true}).click();
+  await expect(page.locator('.hint-item--math').first()).toBeVisible();
+  await solveCurrentSimpleExercise(page);
+
+  const progress=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),PROGRESS_KEY);
+  expect(progress.completed).toBe(1);
+  expect(progress.skills['equation-isolation'].mastery).toBeLessThan(.9);
 });
 
 test('progress indicators stay compact at 320px',async({page})=>{
@@ -45,6 +67,15 @@ test('progress indicators stay compact at 320px',async({page})=>{
   await page.setViewportSize({width:320,height:760});
   await page.goto('./');
   await expect(page.locator('.category-progress').first()).toBeVisible();
+  const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth}));
+  expect(dims.scroll).toBeLessThanOrEqual(dims.inner);
+});
+
+test('hint controls stay inside a 320px viewport',async({page})=>{
+  await page.setViewportSize({width:320,height:760});
+  await page.goto('./');
+  await page.getByRole('button',{name:/Équations simples/}).click();
+  await page.getByRole('button',{name:'Indice',exact:true}).click();
   const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth}));
   expect(dims.scroll).toBeLessThanOrEqual(dims.inner);
 });
