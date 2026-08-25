@@ -1,14 +1,21 @@
 import { assertWorkspace } from './core.js';
-import { getKeyboardProfile, validateKeyboardProfile } from './keyboardProfiles.js';
+import { getKeyDefinition, getKeyboardProfile, validateKeyboardProfile } from './keyboardProfiles.js';
 
 function freezeRecord(record={}){
   return Object.freeze({...record});
+}
+
+function normalizeKeyboardConfig(keyboard){
+  const extraKeys=Object.freeze([...(keyboard?.extraKeys||[])]);
+  return Object.freeze({...keyboard,extraKeys});
 }
 
 function assertKeyboardConfig(keyboard){
   if(!keyboard?.profile) throw new Error('A trainer pack needs a keyboard profile');
   const profile=getKeyboardProfile(keyboard.profile);
   validateKeyboardProfile(profile);
+  if(keyboard.extraKeys!==undefined&&!Array.isArray(keyboard.extraKeys)) throw new Error('keyboard.extraKeys must be an array');
+  for(const id of keyboard.extraKeys||[]) getKeyDefinition(id);
   return true;
 }
 
@@ -35,7 +42,7 @@ export function defineTrainerPack(config){
     ...config,
     categories:Object.freeze([...config.categories]),
     categoryInfo:freezeRecord(config.categoryInfo),
-    keyboard:Object.freeze({...config.keyboard}),
+    keyboard:normalizeKeyboardConfig(config.keyboard),
     pedagogy:config.pedagogy ? Object.freeze({...config.pedagogy}) : Object.freeze({})
   });
 }
@@ -49,7 +56,7 @@ export function resolveExerciseWorkspace(pack,exercise){
 export function resolveExerciseKeyboard(pack,exercise){
   const keyboard=exercise?.keyboard?{...pack.keyboard,...exercise.keyboard}:pack.keyboard;
   assertKeyboardConfig(keyboard);
-  return Object.freeze({...keyboard});
+  return normalizeKeyboardConfig(keyboard);
 }
 
 export function assertExerciseForPack(pack,exercise){
