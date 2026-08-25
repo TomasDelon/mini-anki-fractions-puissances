@@ -50,28 +50,34 @@ function Correction({exercise,workspace,pack}){
   </div></div>;
 }
 
-function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initialSeed,initialRows,onBack}){
+function Practice({pack,sessionStore,progressStore,maxRows,category,seed:initialSeed,initialRows,initialAttempt,onBack}){
   const [seed,setSeed]=useState(initialSeed>>>0);
   const exercise=useMemo(()=>pack.generateExercise(category,seed),[pack,category,seed]);
   const workspace=resolveExerciseWorkspace(pack,exercise);
   const keyboardConfig=resolveExerciseKeyboard(pack,exercise);
   const hintSequence=useMemo(()=>createHintSequence(pack,exercise),[pack,exercise]);
+  const resumedAttempt=initialAttempt||{};
   const [rows,setRows]=useState(()=>hydrateDerivationRows(initialRows,workspace));
   const [activeId,setActiveId]=useState(rows[0]?.id??0);
   const [activeField,setActiveField]=useState(null);
   const [feedback,setFeedback]=useState({kind:'editing'});
   const [showCorrection,setShowCorrection]=useState(false);
-  const [fullCorrectionUsed,setFullCorrectionUsed]=useState(false);
-  const [hintCount,setHintCount]=useState(0);
+  const [fullCorrectionUsed,setFullCorrectionUsed]=useState(Boolean(resumedAttempt.fullCorrectionUsed));
+  const [hintCount,setHintCount]=useState(()=>Math.min(hintSequence.length,Math.max(0,Math.floor(resumedAttempt.hintCount||0))));
   const [selectionMode,setSelectionMode]=useState(false);
-  const [mistakes,setMistakes]=useState(0);
+  const [mistakes,setMistakes]=useState(()=>Math.max(0,Math.floor(resumedAttempt.mistakes||0)));
   const [recent,setRecent]=useState(()=>[recentExerciseEntry(initialSeed,exercise)]);
   const nextId=useRef(Math.max(1,...rows.map(row=>row.id+1)));
   const fields=useRef(new Map());
-  const startedAt=useRef(Date.now());
+  const startedAt=useRef(Number.isFinite(resumedAttempt.startedAt)&&resumedAttempt.startedAt>0?resumedAttempt.startedAt:Date.now());
   const completionRecorded=useRef(false);
 
-  useEffect(()=>sessionStore.save({category,seed,rows:serializeDerivationRows(rows)}),[sessionStore,category,seed,rows]);
+  useEffect(()=>sessionStore.save({
+    category,
+    seed,
+    rows:serializeDerivationRows(rows),
+    attempt:{mistakes,hintCount,fullCorrectionUsed,startedAt:startedAt.current}
+  }),[sessionStore,category,seed,rows,mistakes,hintCount,fullCorrectionUsed]);
   useEffect(()=>{requestAnimationFrame(()=>{const field=fields.current.get(activeId);if(field){setActiveField(field);if(!field.hasFocus())field.focus();}});},[seed,activeId]);
 
   const register=(id,field)=>{
@@ -160,7 +166,7 @@ export function TrainerApp({pack,maxRows=20}){
   const sessionStore=useMemo(()=>createSessionStore(pack,{maxRows,legacyKeys:pack.session?.legacyKeys||[]}),[pack,maxRows]);
   const progressStore=useMemo(()=>createProgressStore(pack),[pack]);
   const [screen,setScreen]=useState({kind:'home'});
-  if(screen.kind==='practice')return <Practice pack={pack} sessionStore={sessionStore} progressStore={progressStore} maxRows={maxRows} category={screen.category} seed={screen.seed} initialRows={screen.rows} onBack={()=>setScreen({kind:'home'})}/>;
+  if(screen.kind==='practice')return <Practice pack={pack} sessionStore={sessionStore} progressStore={progressStore} maxRows={maxRows} category={screen.category} seed={screen.seed} initialRows={screen.rows} initialAttempt={screen.attempt} onBack={()=>setScreen({kind:'home'})}/>;
   return <TrainerHome pack={pack} sessionStore={sessionStore} progressStore={progressStore} onChoose={category=>{
     sessionStore.clear();
     const choice=selectNextExercise(pack,category,progressStore.load());
