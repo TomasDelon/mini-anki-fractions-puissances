@@ -26,7 +26,7 @@ test('keyboard is stable, complete and ordered',async({page})=>{
 test('x then square produces a postfix square',async({page})=>{
   await openSimple(page);
   await page.getByRole('button',{name:'x',exact:true}).click();
-  await page.getByRole('button',{name:'Carré'}).click();
+  await page.getByRole('button',{name:'Carré',exact:true}).click();
   const v=await fieldValue(page);
   expect(v).toContain('x');
   expect(v).toMatch(/\^\{?2\}?/);
@@ -68,7 +68,7 @@ test('square wraps a selection',async({page})=>{
   await openSimple(page);
   await setField(page,'x+1');
   await page.locator('.math-row math-field').evaluate(m=>{m.select();m.focus();});
-  await page.getByRole('button',{name:'Carré'}).click();
+  await page.getByRole('button',{name:'Carré',exact:true}).click();
   const v=await fieldValue(page);
   expect(v).toContain('x+1');
   expect(v).toMatch(/\^\{?2\}?/);
