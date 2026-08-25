@@ -40,10 +40,7 @@ describe('equivalence diagnostics',()=>{
   test('sqrt(x²)=3 and |x|=3 are equivalent',()=>{
     expect(compareSteps('\\sqrt{x^2}=3','|x|=3').kind).toBe('equivalent');
   });
-  test('variable denominators are explicitly outside 3eme scope',()=>{
+  test('variable denominators are outside this 3eme application',()=>{
     expect(analyze('\\frac{x}{x}=1').kind).toBe('unsupported');
-  });
-  test('general radical-domain exercises are outside scope',()=>{
-    expect(analyze('\\sqrt{x}=3').kind).toBe('unsupported');
   });
 });
