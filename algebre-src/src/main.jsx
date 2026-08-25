@@ -14,6 +14,7 @@ import {
   serializeDerivationRows,
   validateDerivation
 } from './trainer/core.js';
+import { getKeyDefinition, getKeyboardProfile } from './trainer/keyboardProfiles.js';
 
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
@@ -105,14 +106,12 @@ function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onD
 
 function Prompt({latex,workspace}){ return <div class={`prompt-row derivation-row derivation-row--${workspace.layout}`}><RelationMark relation={workspace.defaultRelation} workspace={workspace} hidden/><StaticMath latex={`\\displaystyle ${latex}`} className="prompt-math"/><span class="row-mark"/></div>; }
 
-const KEY_LABELS={
-  times:'\\times',x:'x',square:'{}^{2}',pm:'\\pm',parentheses:'(\\square)',sqrt:'\\sqrt{\\square}',fraction:'\\dfrac{\\square}{\\square}',abs:'|\\square|'
-};
 function Key({dataKey,label,math=true,className='',onClick,ariaLabel}){
   return <button type="button" data-key={dataKey} aria-label={ariaLabel} class={`key ${math?'key--math':''} ${className}`} onPointerDown={e=>e.preventDefault()} onClick={onClick}>{math?<StaticMath latex={label}/>:label}</button>;
 }
 
-function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpty}){
+function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpty,onSetRelation,profileId=EQUATIONS_3EME_PACK.keyboard.profile}){
+  const profile=getKeyboardProfile(profileId);
   const insert=(latex,opts={})=>{
     if(!field)return;
     field.insert(latex,{insertionMode:'replaceSelection',selectionMode:'after',mode:'math',focus:true,...opts});
@@ -145,24 +144,26 @@ function MathKeyboard({field,selectionMode,setSelectionMode,onEnter,onDeleteEmpt
     field.insert('\\text{ ou }',{insertionMode:'replaceSelection',selectionMode:'after',mode:'math',focus:true});
     field.mode='math';field.focus();setSelectionMode(false);
   };
-  return <div class="keyboard" aria-label="Clavier mathématique">
-    <div class="key-grid">
-      {[7,8,9].map(n=><Key key={n} dataKey={`${n}`} label={`${n}`} onClick={()=>insert(`${n}`)}/>)}
-      <Key dataKey="plus" label="+" ariaLabel="Plus" onClick={()=>insert('+')}/><Key dataKey="minus" label="-" ariaLabel="Moins" onClick={()=>insert('-')}/><Key dataKey="times" label={KEY_LABELS.times} ariaLabel="Multiplier" onClick={()=>insert('\\times')}/>
-      {[4,5,6].map(n=><Key key={n} dataKey={`${n}`} label={`${n}`} onClick={()=>insert(`${n}`)}/>)}
-      <Key dataKey="x" label={KEY_LABELS.x} ariaLabel="x" onClick={()=>insert('x')}/><Key dataKey="square" label={KEY_LABELS.square} ariaLabel="Carré" onClick={square}/><Key dataKey="equals" label="=" ariaLabel="Égal" onClick={()=>insert('=')}/>
-      {[1,2,3].map(n=><Key key={n} dataKey={`${n}`} label={`${n}`} onClick={()=>insert(`${n}`)}/>)}
-      <Key dataKey="pm" label={KEY_LABELS.pm} ariaLabel="Plus ou moins" onClick={()=>insert('\\pm')}/><Key dataKey="parentheses" label={KEY_LABELS.parentheses} ariaLabel="Parenthèses" onClick={()=>structure('parentheses')}/><Key dataKey="sqrt" label={KEY_LABELS.sqrt} ariaLabel="Racine carrée" onClick={()=>structure('sqrt')}/>
-      <Key dataKey="0" label="0" onClick={()=>insert('0')}/><Key dataKey="fraction" label={KEY_LABELS.fraction} ariaLabel="Fraction" onClick={()=>structure('fraction')}/><Key dataKey="abs" label={KEY_LABELS.abs} ariaLabel="Valeur absolue" onClick={()=>structure('abs')}/>
-      <Key dataKey="or" label="ou" math={false} className="key--word" ariaLabel="ou" onClick={textOr}/><Key dataKey="up" label="↑" math={false} className="key--nav" ariaLabel="Monter" onClick={()=>move('up')}/><Key dataKey="down" label="↓" math={false} className="key--nav" ariaLabel="Descendre" onClick={()=>move('down')}/>
-    </div>
-    <div class="key-bottom-row">
-      <Key dataKey="select" label="Sélection" math={false} className={`key--select ${selectionMode?'key--active':''}`} ariaLabel="Mode sélection" onClick={()=>setSelectionMode(v=>!v)}/>
-      <Key dataKey="left" label="←" math={false} className="key--nav" ariaLabel="Déplacer à gauche" onClick={()=>move('left')}/>
-      <Key dataKey="right" label="→" math={false} className="key--nav" ariaLabel="Déplacer à droite" onClick={()=>move('right')}/>
-      <Key dataKey="backspace" label="⌫" math={false} className="key--backspace" ariaLabel="Effacer" onClick={erase}/>
-      <Key dataKey="enter" label="Entrée" math={false} className="key--enter" ariaLabel="Nouvelle ligne" onClick={enter}/>
-    </div>
+  const runAction=definition=>{
+    const action=definition.action;
+    if(action.type==='insert') return insert(action.latex);
+    if(action.type==='structure') return structure(action.kind);
+    if(action.type==='square') return square();
+    if(action.type==='move') return move(action.direction);
+    if(action.type==='erase') return erase();
+    if(action.type==='enter') return enter();
+    if(action.type==='text-or') return textOr();
+    if(action.type==='toggle-selection') return setSelectionMode(value=>!value);
+    if(action.type==='set-relation'&&onSetRelation) return onSetRelation(action.relation);
+  };
+  const renderKey=id=>{
+    const definition=getKeyDefinition(id);
+    const active=id==='select'&&selectionMode;
+    return <Key key={id} dataKey={definition.id} label={definition.label} math={definition.math} ariaLabel={definition.ariaLabel} className={`${definition.className||''} ${active?'key--active':''}`} onClick={()=>runAction(definition)}/>;
+  };
+  return <div class="keyboard" aria-label="Clavier mathématique" data-profile={profile.id}>
+    <div class="key-grid">{profile.grid.map(renderKey)}</div>
+    <div class="key-bottom-row">{profile.bottom.map(renderKey)}</div>
   </div>;
 }
 
@@ -200,6 +201,11 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   const changeRelation=id=>{
     if(workspace.relationMode!=='student')return;
     setRows(old=>old.map(row=>row.id===id?{...row,relationBefore:cycleRelation(row.relationBefore,workspace)}:row));
+    setFeedback({kind:'editing'});setShowCorrection(false);
+  };
+  const setActiveRelation=relation=>{
+    if(workspace.relationMode!=='student'||!workspace.allowedRelations.includes(relation))return;
+    setRows(old=>old.map(row=>row.id===activeId?{...row,relationBefore:relation}:row));
     setFeedback({kind:'editing'});setShowCorrection(false);
   };
   const addAfter=(id=activeId)=>{
@@ -241,7 +247,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
       {!success&&['error','incomplete','continue'].includes(feedback.kind)&&<button type="button" class="correction-toggle" onClick={()=>setShowCorrection(v=>!v)}>{showCorrection?'Masquer la correction':'Voir une correction'}</button>}
     </div>
     {showCorrection&&<Correction exercise={exercise} workspace={workspace}/>} 
-    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)}/>} 
+    {!success&&<MathKeyboard field={activeField} selectionMode={selectionMode} setSelectionMode={setSelectionMode} onEnter={()=>addAfter(activeId)} onDeleteEmpty={()=>deleteEmpty(activeId)} onSetRelation={setActiveRelation}/>} 
   </main>;
 }
 
