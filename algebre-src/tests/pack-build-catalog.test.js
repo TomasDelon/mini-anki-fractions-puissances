@@ -13,6 +13,7 @@ describe('trainer PWA build catalog',()=>{
     expect(new Set(bases).size).toBe(bases.length);
     expect(bases).toContain('/mini-anki-fractions-puissances/algebre/');
     expect(bases).toContain('/mini-anki-fractions-puissances/calcul-litteral/');
+    expect(bases).toContain('/mini-anki-fractions-puissances/fractions/');
   });
 
   test('every build definition points to the matching runtime pack',async()=>{
