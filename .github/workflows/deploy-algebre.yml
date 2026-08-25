@@ -59,6 +59,8 @@ jobs:
         if: steps.payload.outputs.present == 'true'
         shell: bash
         run: |
+          git pull --rebase origin main
+
           rm -rf algebre
           mkdir -p algebre
           cp -R /tmp/algebre-src/dist/. algebre/
