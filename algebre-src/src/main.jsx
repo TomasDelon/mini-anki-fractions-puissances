@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { MathfieldElement } from 'mathlive';
 import 'mathlive/fonts.css';
 import './styles.css';
+import './trainer/trainer.css';
 import { analyze, setEqual, validateChain } from './math.js';
 import { CATEGORIES, CATEGORY_INFO, generateExercise, randomSeed } from './exercises.js';
 import { EQUATIONS_3EME_PACK } from './packs/equations3eme.js';
@@ -10,11 +11,12 @@ import {
   createDerivationRow,
   cycleRelation,
   hydrateDerivationRows,
-  relationInfo,
   serializeDerivationRows,
   validateDerivation
 } from './trainer/core.js';
 import { getKeyDefinition, getKeyboardProfile } from './trainer/keyboardProfiles.js';
+import { DerivationEditor, RelationMark } from './trainer/DerivationEditor.jsx';
+import { StaticMath, configureMathField } from './trainer/MathView.jsx';
 
 MathfieldElement.soundsDirectory = null;
 MathfieldElement.keypressVibration = false;
@@ -41,13 +43,6 @@ function clearSession(){
   try{localStorage.removeItem(LEGACY_STORAGE_KEY);}catch{}
 }
 
-function StaticMath({latex,className=''}){
-  // MathLive's <math-span> renders when connected. Giving the rendered node a
-  // value-derived key guarantees that Preact replaces it when the LaTeX changes,
-  // instead of only mutating a hidden text node while the old visual remains.
-  return <math-span key={latex} class={className} aria-hidden="true">{latex}</math-span>;
-}
-
 function Home({onChoose,onResume}){
   const saved=loadSession();
   return <main class="home-screen">
@@ -60,51 +55,6 @@ function Home({onChoose,onResume}){
     </div>
   </main>;
 }
-
-function configureField(mf){
-  if(!mf)return;
-  mf.mathVirtualKeyboardPolicy='manual';
-  mf.defaultMode='math';
-  mf.smartMode=false;
-  mf.smartFence=false;
-  mf.smartSuperscript=true;
-  mf.removeExtraneousParentheses=false;
-  mf.popoverPolicy='off';
-  mf.scriptDepth=[0,1];
-  mf.placeholderSymbol='□';
-}
-
-function RelationMark({relation,workspace,hidden=false,onChange}){
-  const info=relationInfo(relation);
-  const editable=workspace.relationMode==='student'&&workspace.allowedRelations.length>1&&onChange;
-  if(hidden) return <span class="equiv equiv--hidden relation-mark" aria-hidden="true">{info.symbol||'='}</span>;
-  if(editable){
-    return <button type="button" class="equiv relation-mark relation-mark--editable" aria-label={`${info.aria}. Changer la relation`} onPointerDown={e=>e.preventDefault()} onClick={onChange}>{info.symbol}</button>;
-  }
-  return <span class="equiv relation-mark" aria-label={info.aria}>{info.symbol}</span>;
-}
-
-function MathRow({row,index,workspace,isInvalid,isIncomplete,onValue,onFocus,onDirectPointer,onEnter,onDeleteEmpty,onRelationChange,register}){
-  const ref=useRef(null);
-  useEffect(()=>{
-    const mf=ref.current; if(!mf)return;
-    configureField(mf); register(row.id,mf);
-    if(mf.value!==row.value) mf.value=row.value;
-    return()=>register(row.id,null);
-  },[row.id]);
-  useEffect(()=>{const mf=ref.current;if(mf&&mf.value!==row.value)mf.value=row.value;},[row.value]);
-  const keydown=e=>{
-    if(e.key==='Enter'){e.preventDefault();e.stopPropagation();onEnter(row.id);return;}
-    if(e.key==='Backspace'&&e.currentTarget.value.trim()===''&&onDeleteEmpty(row.id)){e.preventDefault();e.stopPropagation();}
-  };
-  return <div class={`math-row derivation-row derivation-row--${workspace.layout} ${isInvalid?'math-row--invalid':''} ${isIncomplete?'math-row--incomplete':''}`}>
-    <RelationMark relation={row.relationBefore} workspace={workspace} onChange={()=>onRelationChange(row.id)}/>
-    <math-field ref={ref} aria-label={`Étape ${index+1}`} onInput={e=>onValue(row.id,e.currentTarget.value)} onFocus={e=>onFocus(row.id,e.currentTarget)} onPointerDown={onDirectPointer} onKeyDown={keydown}/>
-    <span class="row-mark" aria-label={isInvalid?'Erreur':undefined}>{isInvalid?'×':''}</span>
-  </div>;
-}
-
-function Prompt({latex,workspace}){ return <div class={`prompt-row derivation-row derivation-row--${workspace.layout}`}><RelationMark relation={workspace.defaultRelation} workspace={workspace} hidden/><StaticMath latex={`\\displaystyle ${latex}`} className="prompt-math"/><span class="row-mark"/></div>; }
 
 function Key({dataKey,label,math=true,className='',onClick,ariaLabel}){
   return <button type="button" data-key={dataKey} aria-label={ariaLabel} class={`key ${math?'key--math':''} ${className}`} onPointerDown={e=>e.preventDefault()} onClick={onClick}>{math?<StaticMath latex={label}/>:label}</button>;
@@ -196,7 +146,7 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
     else{fields.current.delete(id);if(id===activeId)setActiveField(null);}
   };
   const edit=(id,value)=>{setRows(old=>old.map(r=>r.id===id?{...r,value}:r));setFeedback({kind:'editing'});setShowCorrection(false);};
-  const focus=(id,mf)=>{setActiveId(id);setActiveField(mf);configureField(mf);};
+  const focus=(id,mf)=>{setActiveId(id);setActiveField(mf);configureMathField(mf);};
   const directPointer=()=>setSelectionMode(false);
   const changeRelation=id=>{
     if(workspace.relationMode!=='student')return;
@@ -223,9 +173,6 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
   };
   const verify=()=>setFeedback(validateDerivation(exercise.promptLatex,rows,workspace,{iffChain:validateChain}));
   const next=()=>{
-    // A new seed can legitimately generate the same visible equation. For a
-    // learner, that looks as if "Suivant" did nothing, so reject both recent
-    // seeds and an immediately repeated prompt.
     let s=randomSeed(),guard=0;
     while((recent.includes(s)||generateExercise(category,s).promptLatex===exercise.promptLatex)&&guard++<50)s=randomSeed();
     const id=nextId.current++;
@@ -236,9 +183,21 @@ function Practice({category,seed:initialSeed,initialRows,onBack}){
 
   return <main class="practice-screen">
     <header class="practice-header"><button type="button" class="back-button" aria-label="Retour aux catégories" onClick={onBack}>‹</button><div class="practice-category">{CATEGORY_INFO[category].title}</div><div class="header-spacer"/></header>
-    <section class={`workspace workspace--${workspace.layout}`} aria-label="Résolution"><Prompt key={`${seed}:${exercise.promptLatex}`} latex={exercise.promptLatex} workspace={workspace}/><div class="student-rows">
-      {rows.map((row,i)=><MathRow key={row.id} row={row} index={i} workspace={workspace} isInvalid={i===invalid} isIncomplete={i===incomplete} onValue={edit} onFocus={focus} onDirectPointer={directPointer} onEnter={addAfter} onDeleteEmpty={deleteEmpty} onRelationChange={changeRelation} register={register}/>) }
-    </div></section>
+    <DerivationEditor
+      promptKey={`${seed}:${exercise.promptLatex}`}
+      promptLatex={exercise.promptLatex}
+      rows={rows}
+      workspace={workspace}
+      invalidRow={invalid}
+      incompleteRow={incomplete}
+      onValue={edit}
+      onFocus={focus}
+      onDirectPointer={directPointer}
+      onEnter={addAfter}
+      onDeleteEmpty={deleteEmpty}
+      onRelationChange={changeRelation}
+      register={register}
+    />
     {!success&&<div class="practice-controls"><button type="button" class="verify-button" onClick={verify}>Vérifier</button></div>}
     <div class="feedback" aria-live="polite">
       {feedback.kind==='error'&&<div class="feedback-message feedback-message--error">{feedback.message}</div>}
