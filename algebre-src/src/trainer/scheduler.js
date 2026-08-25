@@ -31,15 +31,16 @@ function isRejected(candidate,seed,recent,currentPrompt){
   return recent.some(item=>(item?.seed!==null&&item?.seed!==undefined&&item.seed===seed)||item?.promptLatex===candidate.promptLatex);
 }
 
-function combinedRecent(progress,sessionRecent,limit=8){
-  const persisted=Array.isArray(progress.recentExercises)?progress.recentExercises.slice(-limit):[];
+function combinedRecent(progress,sessionRecent,limit){
+  const safeLimit=Math.max(0,Math.floor(limit||0));
+  const persisted=safeLimit&&Array.isArray(progress.recentExercises)?progress.recentExercises.slice(-safeLimit):[];
   const live=Array.isArray(sessionRecent)?sessionRecent:[];
-  return [...persisted,...live].slice(-(limit+live.length));
+  return [...persisted,...live].slice(-(safeLimit+live.length));
 }
 
 export function selectNextExercise(pack,category,progress,options={}){
   const normalizedProgress=normalizeProgress(pack,progress);
-  const recent=combinedRecent(normalizedProgress,options.recent,options.historySize??8);
+  const recent=combinedRecent(normalizedProgress,options.recent,options.historySize??pack.training.historySize);
   const currentPrompt=options.currentPrompt||'';
   const nextSeed=options.nextSeed||pack.nextSeed;
   const adaptive=pack.training?.adaptiveMixed&&category===pack.training.mixedCategory;
