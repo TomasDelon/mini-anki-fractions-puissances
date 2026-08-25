@@ -1,9 +1,9 @@
-name: Deploy Algèbre PWA
+name: Test and deploy Algèbre PWA
 
 on:
   push:
     paths:
-      - 'deploy/algebre-src.ready'
+      - 'algebre-src/**'
       - '.github/workflows/deploy-algebre.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  test-build-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,53 +25,51 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: algebre-src/package.json
 
-      - name: Check deployment payload
-        id: payload
+      - name: Preserve app icons in source build
         shell: bash
         run: |
-          if [[ -f deploy/algebre-src.ready ]] && compgen -G 'deploy/algebre-src.b64.part*' > /dev/null; then
-            echo 'present=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'present=false' >> "$GITHUB_OUTPUT"
-            echo 'No complete deployment payload found; nothing to do.'
-          fi
-
-      - name: Reconstruct source archive
-        if: steps.payload.outputs.present == 'true'
-        shell: bash
-        run: |
-          cat deploy/algebre-src.b64.part* | base64 --decode > /tmp/algebre-src.tar.xz
-          mkdir -p /tmp/algebre-src
-          tar -xJf /tmp/algebre-src.tar.xz -C /tmp/algebre-src
+          mkdir -p algebre-src/public
+          cp algebre/icon-192.png algebre-src/public/icon-192.png
+          cp algebre/icon-512.png algebre-src/public/icon-512.png
+          cp algebre/apple-touch-icon.png algebre-src/public/apple-touch-icon.png
 
       - name: Install dependencies
-        if: steps.payload.outputs.present == 'true'
-        working-directory: /tmp/algebre-src
-        run: yarn install --non-interactive --network-timeout 120000
+        working-directory: algebre-src
+        run: npm install --no-audit --no-fund
 
-      - name: Build for GitHub Pages subpath
-        if: steps.payload.outputs.present == 'true'
-        working-directory: /tmp/algebre-src
-        run: yarn vite build --base=/mini-anki-fractions-puissances/algebre/
+      - name: Algebra and generator tests
+        working-directory: algebre-src
+        run: npm test
 
-      - name: Publish static build
-        if: steps.payload.outputs.present == 'true'
+      - name: Install browser engines
+        working-directory: algebre-src
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Browser ergonomics tests
+        working-directory: algebre-src
+        run: npm run test:e2e
+
+      - name: Build production PWA
+        working-directory: algebre-src
+        run: npm run build
+
+      - name: Publish tested build
         shell: bash
         run: |
           git pull --rebase origin main
-
           rm -rf algebre
           mkdir -p algebre
-          cp -R /tmp/algebre-src/dist/. algebre/
-          rm -f deploy/algebre-src.b64.part* deploy/algebre-src.ready
+          cp -R algebre-src/dist/. algebre/
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add algebre deploy
+          git add algebre
           if git diff --cached --quiet; then
             echo 'No deployment changes.'
           else
-            git commit -m 'Deploy Algèbre PWA [skip ci]'
+            git commit -m 'Deploy tested Algèbre PWA [skip ci]'
             git push
           fi
