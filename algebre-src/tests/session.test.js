@@ -25,6 +25,21 @@ describe('trainer session store',()=>{
     expect(store.load()).toEqual({category:'linear',seed:42,rows:[{value:'3x=9',relationBefore:'iff'}]});
   });
 
+  test('persists review mode and its target skill without affecting normal sessions',()=>{
+    const storage=memoryStorage();
+    const store=createSessionStore(EQUATIONS_3EME_PACK,{storage});
+    store.save({
+      category:'simple',seed:19,rows:[''],mode:'review',targetSkill:'equation-isolation'
+    });
+    expect(store.load()).toMatchObject({
+      category:'simple',seed:19,mode:'review',targetSkill:'equation-isolation'
+    });
+
+    store.save({category:'simple',seed:20,rows:[''],mode:'review',targetSkill:'not-a-skill'});
+    expect(store.load().mode).toBeUndefined();
+    expect(store.load().targetSkill).toBeUndefined();
+  });
+
   test('persists attempt assistance, mistakes and active elapsed time across a reload',()=>{
     const storage=memoryStorage();
     const store=createSessionStore(EQUATIONS_3EME_PACK,{storage});
