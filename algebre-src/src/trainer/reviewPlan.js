@@ -51,12 +51,16 @@ export function selectReviewExercise(pack,progress,options={}){
   const plan=buildReviewPlan(pack,progress,options);
   if(!plan.length)return null;
   const target=plan[0];
+  const sampleSize=Number.isFinite(options.sampleSize)
+    ?Math.max(1,Math.floor(options.sampleSize))
+    :Math.max(6,Math.min(16,pack.training?.sampleSize||8));
   const choice=selectNextExercise(pack,target.category,progress,{
     recent:options.recent,
     historySize:options.historySize,
     currentPrompt:options.currentPrompt,
     nextSeed:options.nextSeed,
-    now:options.now
+    now:options.now,
+    sampleSize
   });
   return Object.freeze({...choice,targetSkill:target.skillId,review:target});
 }
