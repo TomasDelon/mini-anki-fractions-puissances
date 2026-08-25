@@ -29,7 +29,9 @@
         gap: 6px !important;
       }
 
-      .keyboard .key {
+      /* Only restyle the main math grid. Do not override the bottom row,
+         especially the dark Enter key. */
+      .keyboard .key-grid .key {
         cursor: pointer;
         touch-action: manipulation;
         background: #fff;
@@ -84,6 +86,15 @@
         background: #f8f8fb;
       }
 
+      /* The base bundle intentionally gives Enter white text on a dark key.
+         Keep that styling explicit so later overrides cannot make it invisible. */
+      .keyboard .key--enter,
+      .keyboard [data-key="enter"] {
+        background: #29292e !important;
+        color: #fff !important;
+        border-color: #29292e !important;
+      }
+
       .keyboard .key[data-key="fraction"] .key-math-label { font-size: 18px; }
       .keyboard .key[data-key="sqrt"] .key-math-label { font-size: 20px; }
       .keyboard .key[data-key="square"] .key-math-label { font-size: 25px; }
@@ -113,27 +124,34 @@
 
         function applyLabels() {
           const grid = document.querySelector('.key-grid');
-          if (!grid) return false;
-          let found = 0;
+          if (!grid) return;
           for (const [key, latex] of Object.entries(labels)) {
             const mf = grid.querySelector(`[data-key="${key}"] math-field`);
             if (!mf) continue;
-            found++;
             if (mf.value !== latex) mf.value = latex;
             mf.readOnly = true;
             mf.tabIndex = -1;
           }
-          return found === Object.keys(labels).length;
         }
 
+        /* Preact reuses the same MathLive elements when "Exercice suivant"
+           is pressed and can restore the original bundled label values without
+           creating DOM nodes. A one-shot observer therefore misses it. Keep a
+           tiny synchronizer alive for the keyboard's lifetime. */
         customElements.whenDefined('math-field').then(() => {
-          let attempts = 0;
-          const timer = setInterval(() => {
-            attempts++;
-            if (applyLabels() || attempts >= 30) clearInterval(timer);
-          }, 100);
           applyLabels();
           requestAnimationFrame(applyLabels);
+
+          const app = document.getElementById('app');
+          const observer = new MutationObserver(() => {
+            queueMicrotask(applyLabels);
+            requestAnimationFrame(applyLabels);
+          });
+          observer.observe(app, { childList: true, subtree: true });
+
+          setInterval(() => {
+            if (!document.hidden) applyLabels();
+          }, 100);
         });
       })();
     </script>
