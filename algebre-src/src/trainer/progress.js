@@ -2,6 +2,8 @@ import { resolveExerciseDifficulty, resolveExerciseSkills } from './pack.js';
 
 export const PROGRESS_VERSION=1;
 export const RECENT_EXERCISE_LIMIT=24;
+const HOUR_MS=60*60*1000;
+const DAY_MS=24*HOUR_MS;
 
 const clamp01=value=>Math.max(0,Math.min(1,value));
 
@@ -11,6 +13,13 @@ function finiteNumber(value,fallback=0){
 
 function emptySkill(){
   return {attempts:0,mastery:0,streak:0,mistakes:0,totalDurationMs:0,lastSeen:null};
+}
+
+function timestamp(value){
+  if(value instanceof Date)return Number.isFinite(value.getTime())?value.getTime():Date.now();
+  if(Number.isFinite(value))return value;
+  const parsed=typeof value==='string'?Date.parse(value):NaN;
+  return Number.isFinite(parsed)?parsed:Date.now();
 }
 
 export function progressStorageKey(pack){
@@ -89,6 +98,69 @@ export function normalizeProgress(pack,value){
   };
 }
 
+export function skillReviewIntervalMs(skill){
+  const state=normalizeSkill(skill);
+  if(state.attempts===0)return 0;
+  const streakFactor=2**Math.min(5,state.streak);
+  const masteryFactor=.75+2.25*state.mastery;
+  const hours=Math.min(30*24,8*streakFactor*masteryFactor);
+  return Math.max(4*HOUR_MS,hours*HOUR_MS);
+}
+
+export function skillReviewUrgency(skill,now=new Date()){
+  const state=normalizeSkill(skill);
+  if(state.attempts===0)return 1.25;
+
+  const confidence=1-Math.exp(-state.attempts/3);
+  const effectiveMastery=state.mastery*confidence;
+  const weakness=1-effectiveMastery;
+  const interval=skillReviewIntervalMs(state);
+  const seenAt=state.lastSeen?Date.parse(state.lastSeen):NaN;
+  const age=Number.isFinite(seenAt)?Math.max(0,timestamp(now)-seenAt):interval;
+  const dueRatio=interval>0?Math.min(2,age/interval):1;
+  const overdue=Math.min(1.5,dueRatio);
+  return Math.min(1.5,Math.max(0,weakness*.72+overdue*.38));
+}
+
+export function skillReviewState(pack,progress,skillId,now=new Date()){
+  if(!pack.skills?.[skillId])throw new Error(`Unknown skill ${skillId}`);
+  const normalized=normalizeProgress(pack,progress);
+  const skill=normalized.skills[skillId];
+  const intervalMs=skillReviewIntervalMs(skill);
+  const seenAt=skill.lastSeen?Date.parse(skill.lastSeen):NaN;
+  const nextReviewAt=skill.attempts>0&&Number.isFinite(seenAt)?new Date(seenAt+intervalMs).toISOString():null;
+  return Object.freeze({
+    skillId,
+    attempts:skill.attempts,
+    mastery:skill.mastery,
+    streak:skill.streak,
+    intervalMs,
+    urgency:skillReviewUrgency(skill,now),
+    lastSeen:skill.lastSeen,
+    nextReviewAt,
+    due:skill.attempts===0||!nextReviewAt||timestamp(now)>=Date.parse(nextReviewAt)
+  });
+}
+
+export function exerciseReviewUrgency(pack,progress,exercise,now=new Date()){
+  const normalized=normalizeProgress(pack,progress);
+  const ids=resolveExerciseSkills(pack,exercise);
+  if(!ids.length)return 0;
+  const urgencies=ids.map(id=>skillReviewUrgency(normalized.skills[id],now));
+  const average=urgencies.reduce((sum,value)=>sum+value,0)/urgencies.length;
+  const peak=Math.max(...urgencies);
+  return peak*.62+average*.38;
+}
+
+export function dueSkills(pack,progress,now=new Date(),limit=Infinity){
+  const normalized=normalizeProgress(pack,progress);
+  return Object.keys(pack.skills||{})
+    .map(id=>skillReviewState(pack,normalized,id,now))
+    .filter(state=>state.due)
+    .sort((a,b)=>b.urgency-a.urgency||a.attempts-b.attempts||a.skillId.localeCompare(b.skillId))
+    .slice(0,Math.max(0,Number.isFinite(limit)?Math.floor(limit):Object.keys(pack.skills||{}).length));
+}
+
 export function recordCompletion(pack,progress,exercise,attempt={},now=new Date()){
   const current=normalizeProgress(pack,progress);
   const mistakes=Math.max(0,Math.floor(finiteNumber(attempt.mistakes)));
@@ -97,7 +169,8 @@ export function recordCompletion(pack,progress,exercise,attempt={},now=new Date(
   const quality=qualityFromCompletion({mistakes,hints});
   const difficulty=resolveExerciseDifficulty(pack,exercise);
   const skills=resolveExerciseSkills(pack,exercise);
-  const seenAt=(now instanceof Date?now:new Date(now)).toISOString();
+  const nowDate=now instanceof Date?now:new Date(now);
+  const seenAt=nowDate.toISOString();
   const nextSkills={...current.skills};
 
   for(const id of skills){
