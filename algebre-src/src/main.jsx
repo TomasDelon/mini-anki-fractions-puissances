@@ -10,7 +10,8 @@ import { TrainerApp } from './trainer/TrainerApp.jsx';
 MathfieldElement.soundsDirectory=null;
 MathfieldElement.keypressVibration=false;
 
-const pack=resolveTrainerPack(location.search);
+const buildPackId=import.meta.env.VITE_TRAINER_PACK;
+const pack=resolveTrainerPack(location.search,buildPackId);
 render(<TrainerApp pack={pack}/>,document.getElementById('app'));
 
 if(import.meta.env.DEV||location.hostname==='127.0.0.1'||location.hostname==='localhost'){
